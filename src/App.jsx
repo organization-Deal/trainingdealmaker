@@ -191,8 +191,8 @@ function Sidebar({ user, curriculum, progress, watchedCount, total, allWatched, 
       ))}
 
       <div style={{ borderTop: `1px solid ${BRAND.line}`, margin: "10px 0", paddingTop: 10 }}>
-        <button className="navitem f" onClick={() => allWatched && onExam()} style={{ opacity: allWatched ? 1 : 0.5 }}>
-          {finalPassed ? <CheckCircle2 size={13} color={BRAND.green} /> : <GraduationCap size={13} color={allWatched ? BRAND.red : BRAND.sub} />}
+        <button className="navitem f" onClick={onExam}>
+          {finalPassed ? <CheckCircle2 size={13} color={BRAND.green} /> : <GraduationCap size={13} color={BRAND.red} />}
           <span>ข้อสอบใหญ่</span>
         </button>
         <button className="navitem f" onClick={() => unlocked && onRoleplay()} style={{ opacity: unlocked ? 1 : 0.5 }}>
@@ -265,26 +265,23 @@ function Dashboard(props) {
 
         <section style={{ marginTop: 6, marginBottom: 20, maxWidth: 640 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>ก่อนออกสนาม · ข้อสอบใหญ่</div>
-          <div style={{ background: allWatched ? BRAND.card : "#EFEBE4", border: `1px solid ${finalPassed ? BRAND.green : BRAND.line}`, borderRadius: 18, padding: 22 }}>
+          <div style={{ background: BRAND.card, border: `1px solid ${finalPassed ? BRAND.green : BRAND.line}`, borderRadius: 20, padding: 24, boxShadow: "0 4px 20px rgba(43,43,43,.05)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-              {finalPassed ? <CheckCircle2 size={22} color={BRAND.green} /> : allWatched ? <GraduationCap size={22} color={BRAND.red} /> : <Lock size={22} color={BRAND.sub} />}
+              {finalPassed ? <CheckCircle2 size={22} color={BRAND.green} /> : <GraduationCap size={22} color={BRAND.red} />}
               <div style={{ fontWeight: 700, fontSize: 17 }}>ข้อสอบใหญ่ (รวมทุกบท)</div>
             </div>
             <p style={{ fontSize: 14, color: BRAND.sub, margin: "0 0 16px" }}>
-              {finalPassed ? "ผ่านแล้ว ✓ ปลดล็อกสนามซ้อมด้านล่างแล้ว"
-                : allWatched ? "รวมคำถามจากทุกบท ต้องตอบถูก 100% ถึงจะผ่านและปลดสนามซ้อม"
-                  : `ต้องดูคลิปให้ครบทุกบทก่อน — ตอนนี้ดูแล้ว ${watchedCount}/${total} บท`}
+              {finalPassed ? "ผ่านแล้ว ✓ ปลดล็อกสนามซ้อมด้านล่างแล้ว" : "รวมคำถามจากทุกบท ตอบถูก 100% เพื่อปลดสนามซ้อม"}
             </p>
-            <button className="f" onClick={() => allWatched && onExam()} disabled={!allWatched}
-              style={{ ...btnP, background: finalPassed ? BRAND.green : allWatched ? BRAND.red : "#B9B3AA", cursor: allWatched ? "pointer" : "not-allowed" }}>
-              {finalPassed ? "ทำข้อสอบอีกครั้ง" : allWatched ? "เริ่มทำข้อสอบใหญ่" : "ยังล็อกอยู่"}
+            <button className="f" onClick={onExam} style={{ ...btnP, background: finalPassed ? BRAND.green : BRAND.red }}>
+              {finalPassed ? "ทำข้อสอบอีกครั้ง" : "เริ่มทำข้อสอบใหญ่"}
             </button>
           </div>
         </section>
 
         <section style={{ maxWidth: 640 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>ด่านสุดท้าย · สนามซ้อมกับลูกค้าจริง</div>
-          <div style={{ background: unlocked ? BRAND.card : "#EFEBE4", border: `1px solid ${unlocked ? BRAND.green : BRAND.line}`, borderRadius: 18, padding: 22 }}>
+          <div style={{ background: unlocked ? BRAND.card : "#EFEBE4", border: `1px solid ${unlocked ? BRAND.green : BRAND.line}`, borderRadius: 20, padding: 24, boxShadow: unlocked ? "0 4px 20px rgba(43,43,43,.05)" : "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
               {unlocked ? <Swords size={22} color={BRAND.green} /> : <Lock size={22} color={BRAND.sub} />}
               <div style={{ fontWeight: 700, fontSize: 17 }}>สนามซ้อม AI — รับมือลูกค้าก่อนของจริง</div>
@@ -361,14 +358,6 @@ function FinalExam({ allWatched, onBack, onPass, passedBefore }) {
   const submit = () => { setSubmitted(true); if (questions.every((q, i) => answers[i] === q.correct)) onPass(); };
   const retry = () => { setAnswers({}); setSubmitted(false); window.scrollTo(0, 0); };
 
-  if (!allWatched) {
-    return (
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 20px" }}>
-        <button className="f" onClick={onBack} style={btnG}><ChevronLeft size={16} /> กลับ</button>
-        <p style={{ marginTop: 20, color: BRAND.sub }}>ต้องดูคลิปให้ครบทุกบทก่อนถึงจะทำข้อสอบใหญ่ได้</p>
-      </div>
-    );
-  }
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 20px 80px" }}>
       <button className="f" onClick={onBack} style={btnG}><ChevronLeft size={16} /> กลับหน้าหลัก</button>
@@ -415,7 +404,7 @@ function FinalExam({ allWatched, onBack, onPass, passedBefore }) {
   );
 }
 
-/* ---------------- ROLE-PLAY (สนามซ้อมลูกค้าคิดเป็น) ---------------- */
+/* ---------------- ROLE-PLAY (เลือกลูกค้าในห้องแชท) ---------------- */
 const MOODS = [
   "อารมณ์ดี เปิดใจฟัง แต่ยังอยากได้เหตุผลชัดๆ ก่อนเชื่อ",
   "ระแวงหนัก เพิ่งเห็นข่าวคนโดนหลอกลงทุน จับผิดทุกอย่าง",
@@ -427,7 +416,6 @@ const MOODS = [
 ];
 
 function Roleplay({ allPassed, onBack }) {
-  const [phase, setPhase] = useState("select"); // select | chat | decided
   const [scenario, setScenario] = useState(null);
   const [mood, setMood] = useState("");
   const [msgs, setMsgs] = useState([]);
@@ -442,6 +430,7 @@ function Roleplay({ allPassed, onBack }) {
   if (!allPassed) return null;
 
   const saleTurns = msgs.filter((m) => m.role === "sale").length;
+  const decided = !!decision;
 
   const custSystem = (sc, m) => `คุณสวมบทเป็น "ลูกค้าคนไทย" ที่แชทกับพนักงานขายของ DEAL! (เป็นเจ้าของร่วม % ในตู้หยอดเหรียญ บริษัทบริหารให้ รับส่วนแบ่งกำไรรายเดือน)
 บทที่คุณเล่น: ${sc.persona}
@@ -469,9 +458,10 @@ ${BUSINESS_CONTEXT}
 
   const start = (sc) => {
     const m = MOODS[Math.floor(Math.random() * MOODS.length)];
-    setScenario(sc); setMood(m); setMsgs([]); setViolations([]); setDecision(null); setGrade(null); setPhase("chat");
+    setScenario(sc); setMood(m); setMsgs([]); setViolations([]); setDecision(null); setGrade(null);
     customerTurn([], sc, m);
   };
+  const changeCustomer = () => { setScenario(null); setMsgs([]); setViolations([]); setDecision(null); setGrade(null); setInput(""); };
 
   const send = () => {
     const text = input.trim(); if (!text || loading || busy) return;
@@ -497,9 +487,9 @@ ${BUSINESS_CONTEXT}
       t = t.replace(/```json|```/g, "").trim();
       const d = JSON.parse(t);
       if (d.customerLine) setMsgs((prev) => [...prev, { role: "customer", text: d.customerLine }]);
-      setDecision(d); setPhase("decided");
+      setDecision(d);
     } catch {
-      setDecision({ decision: "think", reason: "ประมวลผลไม่สำเร็จ ลองใหม่อีกครั้ง", unresolved: [] }); setPhase("decided");
+      setDecision({ decision: "think", reason: "ประมวลผลไม่สำเร็จ ลองใหม่อีกครั้ง", unresolved: [] });
     } finally { setBusy(false); }
   };
 
@@ -529,33 +519,6 @@ ${BUSINESS_CONTEXT}
     finally { setBusy(false); }
   };
 
-  /* ---- SELECT ---- */
-  if (phase === "select") {
-    return (
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 20px 80px" }}>
-        <button className="f" onClick={onBack} style={btnG}><ChevronLeft size={16} /> กลับ</button>
-        <h2 style={{ fontSize: 26, fontWeight: 800, margin: "16px 0 4px" }}>สนามซ้อมกับลูกค้าจำลอง</h2>
-        <p style={{ color: BRAND.sub, fontSize: 14.5, marginBottom: 22, lineHeight: 1.6 }}>
-          ลูกค้า AI คิดเป็น มีอารมณ์ต่างกันทุกครั้ง และ<b>ตัดสินใจซื้อ/ไม่ซื้อตามที่คุณคุยจริง</b> · ระบบจับคำต้องห้ามสดๆ และให้หัวหน้า AI ประเมินตอนจบ
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(330px,1fr))", gap: 14 }}>
-          {SCENARIOS.map((sc) => (
-            <button key={sc.id} className="f pcard" onClick={() => start(sc)}
-              style={{ textAlign: "left", background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 16, padding: 18, cursor: "pointer" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#F0EEE9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><User size={18} color={BRAND.red} /></div>
-                <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.3 }}>{sc.label}</div>
-              </div>
-              <div style={{ fontSize: 13, color: BRAND.sub, lineHeight: 1.5 }}>{sc.brief}</div>
-              <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: BRAND.red }}><Swords size={14} /> เริ่มซ้อม</div>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  /* ---- CHAT / DECIDED ---- */
   const decoIcon = decision?.decision === "buy" ? <Handshake size={22} color={BRAND.green} />
     : decision?.decision === "reject" ? <XCircle size={22} color={BRAND.red} /> : <Clock size={22} color={BRAND.amber} />;
   const decoColor = decision?.decision === "buy" ? BRAND.green : decision?.decision === "reject" ? BRAND.red : BRAND.amber;
@@ -563,14 +526,18 @@ ${BUSINESS_CONTEXT}
   const decoBg = decision?.decision === "buy" ? "#EAF3EE" : decision?.decision === "reject" ? "#F7EAEA" : "#FBF3E3";
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "14px 16px 20px", display: "flex", flexDirection: "column", height: "100vh" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-        <button className="f" onClick={() => setPhase("select")} style={{ ...btnG, padding: "8px 10px" }}><ChevronLeft size={16} /></button>
-        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#F0EEE9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><User size={20} color={BRAND.red} /></div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 14.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{scenario.label}</div>
-          <div style={{ fontSize: 12, color: BRAND.sub }}>{loading ? "กำลังพิมพ์…" : phase === "decided" ? "จบการสนทนา" : "ลูกค้าจำลอง · ออนไลน์"}</div>
+    <div style={{ maxWidth: 740, margin: "0 auto", padding: "14px 16px 20px", display: "flex", flexDirection: "column", height: "100vh" }}>
+      {/* header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <button className="f" onClick={onBack} style={{ ...btnG, padding: "8px 10px" }}><ChevronLeft size={16} /></button>
+        <div style={{ width: 42, height: 42, borderRadius: "50%", background: scenario ? "#F0EEE9" : "#EDE9E2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {scenario ? <User size={20} color={BRAND.red} /> : <Swords size={20} color={BRAND.sub} />}
         </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{scenario ? scenario.label : "สนามซ้อม AI"}</div>
+          <div style={{ fontSize: 12, color: BRAND.sub }}>{scenario ? (loading ? "กำลังพิมพ์…" : decided ? "จบการสนทนา" : "ลูกค้าจำลอง · ออนไลน์") : "เลือกลูกค้าที่จะซ้อมด้านล่าง"}</div>
+        </div>
+        {scenario && <button className="f" onClick={changeCustomer} style={{ ...btnG, fontSize: 12.5, padding: "7px 12px" }}>เปลี่ยนลูกค้า</button>}
       </div>
 
       {violations.length > 0 && (
@@ -579,22 +546,47 @@ ${BUSINESS_CONTEXT}
         </div>
       )}
 
-      <div ref={scrollRef} className="rp-msgs" style={{ flex: 1, overflowY: "auto", background: BRAND.bg, border: `1px solid ${BRAND.line}`, borderRadius: 16, padding: 14 }}>
-        {msgs.map((m, i) => (
-          <div key={i} className="bin" style={{ display: "flex", justifyContent: m.role === "sale" ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, marginBottom: 10 }}>
-            {m.role === "customer" && <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#EDE9E2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><User size={14} color={BRAND.sub} /></div>}
-            <div style={{ maxWidth: "76%", padding: "10px 14px", borderRadius: 16, fontSize: 14.5, lineHeight: 1.5,
-              background: m.role === "sale" ? (m.flagged?.length ? "#F7EAEA" : BRAND.ink) : BRAND.card,
-              color: m.role === "sale" ? (m.flagged?.length ? BRAND.red : "#fff") : BRAND.ink,
-              border: m.role === "sale" ? (m.flagged?.length ? `1px solid ${BRAND.red}` : "none") : `1px solid ${BRAND.line}`,
-              borderBottomRightRadius: m.role === "sale" ? 4 : 16, borderBottomLeftRadius: m.role === "customer" ? 4 : 16 }}>{m.text}</div>
+      {/* body */}
+      <div ref={scrollRef} className="rp-msgs" style={{ flex: 1, overflowY: "auto", background: BRAND.bg, border: `1px solid ${BRAND.line}`, borderRadius: 18, padding: scenario ? 14 : "18px 16px" }}>
+        {!scenario ? (
+          <div>
+            <div style={{ textAlign: "center", padding: "8px 0 18px" }}>
+              <div style={{ fontSize: 17, fontWeight: 700 }}>เลือกลูกค้าที่จะซ้อม</div>
+              <div style={{ fontSize: 13, color: BRAND.sub, marginTop: 4, lineHeight: 1.6 }}>ลูกค้า AI คิดเป็น อารมณ์ต่างกันทุกครั้ง และตัดสินใจซื้อ/ไม่ซื้อตามที่คุณคุยจริง</div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))", gap: 12 }}>
+              {SCENARIOS.map((sc) => (
+                <button key={sc.id} className="f pcard" onClick={() => start(sc)}
+                  style={{ textAlign: "left", background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 14, padding: 16, cursor: "pointer" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 7 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#F0EEE9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><User size={17} color={BRAND.red} /></div>
+                    <div style={{ fontWeight: 700, fontSize: 14.5, lineHeight: 1.3 }}>{sc.label}</div>
+                  </div>
+                  <div style={{ fontSize: 12.5, color: BRAND.sub, lineHeight: 1.5 }}>{sc.brief}</div>
+                  <div style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: BRAND.red }}><Swords size={13} /> เริ่มซ้อม</div>
+                </button>
+              ))}
+            </div>
           </div>
-        ))}
-        {loading && (
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
-            <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#EDE9E2", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={14} color={BRAND.sub} /></div>
-            <div className="typing" style={{ background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 16, borderBottomLeftRadius: 4 }}><i></i><i></i><i></i></div>
-          </div>
+        ) : (
+          <>
+            {msgs.map((m, i) => (
+              <div key={i} className="bin" style={{ display: "flex", justifyContent: m.role === "sale" ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, marginBottom: 10 }}>
+                {m.role === "customer" && <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#EDE9E2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><User size={14} color={BRAND.sub} /></div>}
+                <div style={{ maxWidth: "76%", padding: "10px 14px", borderRadius: 16, fontSize: 14.5, lineHeight: 1.5,
+                  background: m.role === "sale" ? (m.flagged?.length ? "#F7EAEA" : BRAND.ink) : BRAND.card,
+                  color: m.role === "sale" ? (m.flagged?.length ? BRAND.red : "#fff") : BRAND.ink,
+                  border: m.role === "sale" ? (m.flagged?.length ? `1px solid ${BRAND.red}` : "none") : `1px solid ${BRAND.line}`,
+                  borderBottomRightRadius: m.role === "sale" ? 4 : 16, borderBottomLeftRadius: m.role === "customer" ? 4 : 16 }}>{m.text}</div>
+              </div>
+            ))}
+            {loading && (
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#EDE9E2", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={14} color={BRAND.sub} /></div>
+                <div className="typing" style={{ background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 16, borderBottomLeftRadius: 4 }}><i></i><i></i><i></i></div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -618,29 +610,28 @@ ${BUSINESS_CONTEXT}
         </div>
       )}
 
-      {phase === "chat" && (
+      {/* footer actions */}
+      {scenario && !decided && (
         <>
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <input className="f" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="พิมพ์ตอบลูกค้า…" style={{ ...inp, margin: 0, flex: 1 }} disabled={busy} />
             <button className="f" onClick={send} disabled={loading || busy} style={{ ...btnP, padding: "0 16px" }}><Send size={16} /></button>
           </div>
           {saleTurns >= 2 && (
-            <button className="f" onClick={decide} disabled={busy || loading}
-              style={{ ...btnP, background: BRAND.ink, justifyContent: "center", marginTop: 8 }}>
+            <button className="f" onClick={decide} disabled={busy || loading} style={{ ...btnP, background: BRAND.ink, justifyContent: "center", marginTop: 8 }}>
               <Handshake size={16} /> {busy ? "ลูกค้ากำลังตัดสินใจ…" : "ปิดการขาย / จบการซ้อม"}
             </button>
           )}
         </>
       )}
-
-      {phase === "decided" && !grade && (
+      {scenario && decided && !grade && (
         <button className="f" onClick={gradeSession} disabled={busy} style={{ ...btnP, justifyContent: "center", marginTop: 10 }}>
           {busy ? "หัวหน้ากำลังประเมิน…" : "ขอผลประเมินจากหัวหน้า AI"}
         </button>
       )}
-      {phase === "decided" && grade && (
-        <button className="f" onClick={() => setPhase("select")} style={{ ...btnG, justifyContent: "center", marginTop: 10 }}>
-          <RotateCcw size={15} /> ซ้อมสถานการณ์ใหม่
+      {scenario && decided && grade && (
+        <button className="f" onClick={changeCustomer} style={{ ...btnG, justifyContent: "center", marginTop: 10 }}>
+          <RotateCcw size={15} /> ซ้อมลูกค้าคนใหม่
         </button>
       )}
     </div>
