@@ -16,9 +16,11 @@ export function loadUser() { try { return JSON.parse(localStorage.getItem("deal_
 export function saveUser(u) { try { localStorage.setItem("deal_user", JSON.stringify(u)); } catch {} }
 export function clearUser() { try { localStorage.removeItem("deal_user"); } catch {} }
 
-/* ---- video URL overrides (แก้ URL บทเดิม) ---- */
+/* ---- overrides: URL วิดีโอ + รูป thumbnail (แก้บทเดิม) ---- */
 export function loadVideoOverrides() { try { return JSON.parse(localStorage.getItem("deal_video_overrides")) || {}; } catch { return {}; } }
 export function saveVideoOverrides(map) { try { localStorage.setItem("deal_video_overrides", JSON.stringify(map)); } catch {} }
+export function loadThumbOverrides() { try { return JSON.parse(localStorage.getItem("deal_thumb_overrides")) || {}; } catch { return {}; } }
+export function saveThumbOverrides(map) { try { localStorage.setItem("deal_thumb_overrides", JSON.stringify(map)); } catch {} }
 
 /* ---- บทที่เพิ่มใหม่จากหน้า admin ---- */
 export function loadAddedLessons() { try { return JSON.parse(localStorage.getItem("deal_added_lessons")) || []; } catch { return []; } }
@@ -28,27 +30,44 @@ export function saveAddedLessons(arr) { try { localStorage.setItem("deal_added_l
 export function loadPreviewUnlock() { try { return localStorage.getItem("deal_preview_unlock") === "1"; } catch { return false; } }
 export function savePreviewUnlock(on) { try { on ? localStorage.setItem("deal_preview_unlock", "1") : localStorage.removeItem("deal_preview_unlock"); } catch {} }
 
-/* ---- ล้างข้อมูลชั่วคราวในเครื่อง (หลัง export+push แล้ว) ---- */
+/* ---- ล้างข้อมูลชั่วคราวในเครื่อง (หลัง export+push) ---- */
 export function clearLocalContent() {
-  try { localStorage.removeItem("deal_video_overrides"); localStorage.removeItem("deal_added_lessons"); } catch {}
+  try {
+    localStorage.removeItem("deal_video_overrides");
+    localStorage.removeItem("deal_thumb_overrides");
+    localStorage.removeItem("deal_added_lessons");
+  } catch {}
 }
 
-/* ---- รวม base + บทที่เพิ่ม + video overrides ---- */
+/* ---- รวม base + บทที่เพิ่ม + overrides (วิดีโอ+รูป) ---- */
 export function getCurriculum() {
   const ov = loadVideoOverrides();
+  const tov = loadThumbOverrides();
   const added = loadAddedLessons();
   const mods = CURRICULUM.map((m) => ({ module: m.module, lessons: m.lessons.map((l) => ({ ...l })) }));
   added.forEach((al) => {
     let m = mods.find((x) => x.module === al.module);
     if (!m) { m = { module: al.module, lessons: [] }; mods.push(m); }
-    m.lessons.push({ id: al.id, title: al.title, videoUrl: al.videoUrl, quiz: al.quiz || [] });
+    m.lessons.push({ id: al.id, title: al.title, videoUrl: al.videoUrl, thumbnail: al.thumbnail || "", quiz: al.quiz || [] });
   });
-  mods.forEach((m) => { m.lessons = m.lessons.map((l) => (ov[l.id] ? { ...l, videoUrl: ov[l.id] } : l)); });
+  mods.forEach((m) => {
+    m.lessons = m.lessons.map((l) => ({
+      ...l,
+      videoUrl: ov[l.id] || l.videoUrl,
+      thumbnail: tov[l.id] !== undefined ? tov[l.id] : (l.thumbnail || ""),
+      quiz: l.quiz || [],
+    }));
+  });
   return mods;
 }
 export const flatLessons = () => getCurriculum().flatMap((m) => m.lessons);
 
-/* ---- สร้างไฟล์ content.js เต็ม(พร้อมบท/วิดีโอที่แก้) ให้เอาไป push ---- */
+/* ---- ข้อสอบใหญ่: รวมทุกคำถามจากทุกบท ---- */
+export function allExamQuestions() {
+  return flatLessons().flatMap((l) => (l.quiz || []).map((q) => ({ ...q, from: l.title })));
+}
+
+/* ---- สร้างไฟล์ content.js เต็ม ให้เอาไป push ---- */
 export function buildContentFile() {
   const cur = getCurriculum();
   return `/* content.js — สร้างจากหน้า /admin  วางทับ src/content.js ทั้งไฟล์ แล้ว git push */
