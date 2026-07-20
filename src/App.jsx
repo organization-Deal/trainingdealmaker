@@ -193,24 +193,23 @@ function Sidebar({ user, curriculum, progress, watchedCount, total, allWatched, 
   );
 }
 
-function ModuleRow({ mod, progress, onOpen }) {
+function AllLessonsRow({ curriculum, progress, onOpen }) {
   const ref = useRef(null);
   const scroll = (d) => ref.current?.scrollBy({ left: d * 336, behavior: "smooth" });
+  const lessons = curriculum.flatMap((m) => m.lessons.map((l) => ({ ...l, __module: m.module })));
   return (
     <section style={{ marginBottom: 38 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
-        <h3 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>{mod.module}</h3>
-        {mod.lessons.length > 2 && (
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="arrow f" onClick={() => scroll(-1)} aria-label="เลื่อนซ้าย"><ChevronLeft size={18} /></button>
-            <button className="arrow f" onClick={() => scroll(1)} aria-label="เลื่อนขวา"><ChevronRight size={18} /></button>
-          </div>
-        )}
+        <h3 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>บทเรียนทั้งหมด · {lessons.length} บท</h3>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="arrow f" onClick={() => scroll(-1)} aria-label="เลื่อนซ้าย"><ChevronLeft size={18} /></button>
+          <button className="arrow f" onClick={() => scroll(1)} aria-label="เลื่อนขวา"><ChevronRight size={18} /></button>
+        </div>
       </div>
       <div className="shelf" ref={ref}>
-        {mod.lessons.map((l, i) => (
+        {lessons.map((l, i) => (
           <div className="card" key={l.id}>
-            <LessonCard lesson={l} idx={i + 1} watched={!!progress[l.id]?.watched} onOpen={() => onOpen(l)} />
+            <LessonCard lesson={l} idx={i + 1} moduleName={l.__module} watched={!!progress[l.id]?.watched} onOpen={() => onOpen(l)} />
           </div>
         ))}
       </div>
@@ -218,7 +217,7 @@ function ModuleRow({ mod, progress, onOpen }) {
   );
 }
 
-function LessonCard({ lesson, idx, watched, onOpen }) {
+function LessonCard({ lesson, idx, moduleName, watched, onOpen }) {
   return (
     <button className="f lc" onClick={onOpen}
       style={{ display: "block", textAlign: "left", padding: 0, background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 18, overflow: "hidden", cursor: "pointer", width: "100%" }}>
@@ -231,6 +230,7 @@ function LessonCard({ lesson, idx, watched, onOpen }) {
           : <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(0,0,0,.55)", color: "#fff", borderRadius: 8, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>บทที่ {idx}</div>}
       </div>
       <div style={{ padding: "14px 16px 16px" }}>
+        {moduleName && <div style={{ fontSize: 11, fontWeight: 600, color: BRAND.sub, marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moduleName}</div>}
         <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.4, marginBottom: 8, minHeight: 42 }}>{lesson.title}</div>
         <div style={{ fontSize: 12.5, color: watched ? BRAND.green : BRAND.sub, display: "flex", alignItems: "center", gap: 5 }}>
           {watched ? "เรียนจบแล้ว" : <><Play size={12} /> ยังไม่ได้ดู</>}
@@ -249,7 +249,7 @@ function Dashboard(props) {
         <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px" }}>การอบรมของคุณ</h1>
         <p style={{ color: BRAND.sub, fontSize: 15, margin: "0 0 32px" }}>ดูคลิปให้ครบทุกบท แล้วสอบใหญ่ให้ผ่านเพื่อปลดสนามซ้อม</p>
 
-        {curriculum.map((mod) => <ModuleRow key={mod.module} mod={mod} progress={progress} onOpen={onOpen} />)}
+        <AllLessonsRow curriculum={curriculum} progress={progress} onOpen={onOpen} />
 
         <section style={{ marginTop: 6, marginBottom: 20, maxWidth: 640 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>ก่อนออกสนาม · ข้อสอบใหญ่</div>
