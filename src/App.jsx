@@ -178,6 +178,48 @@ function Dashboard({ user, curriculum, progress, passedCount, total, allPassed, 
 }
 
 /* ---------------- LESSON + QUIZ ---------------- */
+/* ---- รองรับทั้ง YouTube และ .mp4 ---- */
+function ytId(url = "") {
+  const m = String(url).match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([\w-]{11})/);
+  return m ? m[1] : null;
+}
+
+function YouTubePlayer({ videoId, onTime, onMeta, onEnd }) {
+  const holder = useRef(null);
+  const player = useRef(null);
+  useEffect(() => {
+    let poll;
+    const build = () => {
+      player.current = new window.YT.Player(holder.current, {
+        videoId,
+        playerVars: { rel: 0, modestbranding: 1 },
+        events: {
+          onReady: (e) => onMeta(Math.floor(e.target.getDuration())),
+          onStateChange: (e) => {
+            if (e.data === window.YT.PlayerState.PLAYING) {
+              clearInterval(poll);
+              poll = setInterval(() => {
+                onTime(Math.floor(player.current.getCurrentTime()), Math.floor(player.current.getDuration()));
+              }, 1000);
+            } else { clearInterval(poll); }
+            if (e.data === window.YT.PlayerState.ENDED) onEnd();
+          },
+        },
+      });
+    };
+    if (window.YT && window.YT.Player) build();
+    else {
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { prev && prev(); build(); };
+      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+        const s = document.createElement("script"); s.src = "https://www.youtube.com/iframe_api"; document.body.appendChild(s);
+      }
+    }
+    return () => { clearInterval(poll); try { player.current?.destroy(); } catch {} };
+  }, [videoId]);
+  return <div style={{ aspectRatio: "16/9" }}><div ref={holder} style={{ width: "100%", height: "100%" }} /></div>;
+}
+
 function LessonView({ lesson, st, onBack, onUpdate }) {
   const vidRef = useRef(null);
   const [watchedSec, setWatchedSec] = useState(st.watchedSec || 0);
@@ -185,13 +227,15 @@ function LessonView({ lesson, st, onBack, onUpdate }) {
   const [mode, setMode] = useState("video");
   const watchedEnough = duration > 0 && watchedSec >= duration * 0.9;
   const canQuiz = watchedEnough || st.watched;
+  const yt = ytId(lesson.videoUrl);
 
-  const onTime = () => {
-    const v = vidRef.current; if (!v) return;
-    const w = Math.max(watchedSec, Math.floor(v.currentTime));
+  const handleTime = (sec, dur) => {
+    const w = Math.max(watchedSec, Math.floor(sec || 0));
     setWatchedSec(w);
-    if (w % 3 === 0) onUpdate({ watchedSec: w, duration: Math.floor(v.duration || duration) });
+    if (dur) setDuration(Math.floor(dur));
+    if (w % 3 === 0) onUpdate({ watchedSec: w, duration: Math.floor(dur || duration) });
   };
+  const onVideoTime = () => { const v = vidRef.current; if (v) handleTime(v.currentTime, v.duration); };
 
   return (
     <div style={{ maxWidth: 820, margin: "0 auto", padding: "24px 20px 80px" }}>
@@ -201,10 +245,17 @@ function LessonView({ lesson, st, onBack, onUpdate }) {
       {mode === "video" && (
         <>
           <div style={{ borderRadius: 14, overflow: "hidden", border: `1px solid ${BRAND.line}`, background: "#000" }}>
-            <video ref={vidRef} src={lesson.videoUrl} controls onTimeUpdate={onTime}
-              onLoadedMetadata={() => setDuration(Math.floor(vidRef.current?.duration || 0))}
-              onEnded={() => onUpdate({ watched: true, watchedSec, duration })}
-              style={{ width: "100%", display: "block", aspectRatio: "16/9" }} />
+            {yt ? (
+              <YouTubePlayer videoId={yt}
+                onTime={(t, d) => handleTime(t, d)}
+                onMeta={(d) => setDuration(d)}
+                onEnd={() => onUpdate({ watched: true, watchedSec, duration })} />
+            ) : (
+              <video ref={vidRef} src={lesson.videoUrl} controls onTimeUpdate={onVideoTime}
+                onLoadedMetadata={() => setDuration(Math.floor(vidRef.current?.duration || 0))}
+                onEnded={() => onUpdate({ watched: true, watchedSec, duration })}
+                style={{ width: "100%", display: "block", aspectRatio: "16/9" }} />
+            )}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: BRAND.sub, margin: "10px 2px" }}>
             <span>ดูไปแล้ว {fmt(watchedSec)}{duration ? ` / ${fmt(duration)}` : ""}</span>
