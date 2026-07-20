@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Lock, CheckCircle2, Play, Swords, LogOut, ChevronLeft, ChevronRight, RotateCcw, Send,
   ShieldAlert, Award, Circle, AlertTriangle, Settings, GraduationCap, PlayCircle,
+  Clock, XCircle, User, Handshake,
 } from "lucide-react";
-import { SCENARIOS, FORBIDDEN_WORDS, AI_MODEL } from "./content.js";
+import { SCENARIOS, FORBIDDEN_WORDS, AI_MODEL, BUSINESS_CONTEXT } from "./content.js";
 import {
   BRAND, loadProgress, saveProgress, loadUser, saveUser, clearUser,
   getCurriculum, flatLessons, fmt, loadPreviewUnlock, allExamQuestions,
@@ -102,6 +103,17 @@ export default function App() {
         .navitem:hover{background:#EFEBE4}
         .arrow{width:34px;height:34px;border-radius:50%;border:1px solid ${BRAND.line};background:${BRAND.card};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:${BRAND.ink}}
         .arrow:hover{background:#F0EEE9}
+        .typing{display:inline-flex;gap:4px;align-items:center;padding:11px 15px}
+        .typing i{width:7px;height:7px;border-radius:50%;background:#B9B3AA;display:block;animation:tb 1.1s infinite}
+        .typing i:nth-child(2){animation-delay:.18s}
+        .typing i:nth-child(3){animation-delay:.36s}
+        @keyframes tb{0%,60%,100%{opacity:.35;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+        .bin{animation:bin .28s cubic-bezier(.2,.8,.2,1)}
+        @keyframes bin{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+        .rp-msgs::-webkit-scrollbar{width:6px}
+        .rp-msgs::-webkit-scrollbar-thumb{background:${BRAND.line};border-radius:99px}
+        .pcard{transition:transform .15s,box-shadow .15s}
+        .pcard:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(43,43,43,.10)}
         @media(max-width:920px){.side{display:none}.main{padding:24px 18px 80px}}
         @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
       `}</style>
@@ -403,114 +415,232 @@ function FinalExam({ allWatched, onBack, onPass, passedBefore }) {
   );
 }
 
-/* ---------------- ROLE-PLAY ---------------- */
+/* ---------------- ROLE-PLAY (สนามซ้อมลูกค้าคิดเป็น) ---------------- */
+const MOODS = [
+  "อารมณ์ดี เปิดใจฟัง แต่ยังอยากได้เหตุผลชัดๆ ก่อนเชื่อ",
+  "ระแวงหนัก เพิ่งเห็นข่าวคนโดนหลอกลงทุน จับผิดทุกอย่าง",
+  "รีบมาก มีเวลาน้อย ถ้าเซลเยิ่นเย้อหรือตอบไม่ตรงจะหมดอารมณ์",
+  "กำลังเทียบกับอีกเจ้าอยู่ ชอบยกเจ้าอื่นมาเปรียบเทียบ",
+  "มีเงินพร้อมจ่าย แต่กลัวตัดสินใจผิดเลยลังเลไปมา",
+  "เคยลงอะไรแล้วเจ๊งมาก่อน เลยกลัวเสียเงินเป็นพิเศษ",
+  "อารมณ์กลางๆ ฟังไปเรื่อยๆ แต่ต้องโดนใจจริงถึงจะยอมเอา",
+];
+
 function Roleplay({ allPassed, onBack }) {
+  const [phase, setPhase] = useState("select"); // select | chat | decided
   const [scenario, setScenario] = useState(null);
+  const [mood, setMood] = useState("");
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [violations, setViolations] = useState([]);
+  const [decision, setDecision] = useState(null);
   const [grade, setGrade] = useState(null);
-  const [grading, setGrading] = useState(false);
+  const [busy, setBusy] = useState(false);
   const scrollRef = useRef(null);
-  useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [msgs, loading]);
+  useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [msgs, loading, decision, grade]);
   if (!allPassed) return null;
 
-  const start = (sc) => { setScenario(sc); setMsgs([]); setViolations([]); setGrade(null); customerTurn(sc, []); };
-  const customerTurn = async (sc, history) => {
+  const saleTurns = msgs.filter((m) => m.role === "sale").length;
+
+  const custSystem = (sc, m) => `คุณสวมบทเป็น "ลูกค้าคนไทย" ที่แชทกับพนักงานขายของ DEAL! (เป็นเจ้าของร่วม % ในตู้หยอดเหรียญ บริษัทบริหารให้ รับส่วนแบ่งกำไรรายเดือน)
+บทที่คุณเล่น: ${sc.persona}
+อารมณ์วันนี้ (สำคัญ ให้มีผลต่อวิธีตอบจริงๆ): ${m}
+${BUSINESS_CONTEXT}
+คุณมีสภาวะในใจที่เปลี่ยนได้ตลอดบทสนทนา: ความสนใจ · ความเชื่อใจ · ความกังวลที่ยังไม่ถูกแก้
+ประเมินคำตอบพนักงานเงียบๆ ทุกครั้ง แล้วปรับท่าที:
+- ตอบตรง มีหลักฐาน จริงใจ แนบความเสี่ยงตามตรง → เชื่อใจ/สนใจเพิ่ม ค่อยๆ อ่อนลง ถามลึกขึ้น
+- เลี่ยงคำถาม/มั่วตัวเลข/กดดัน/พูดโอเวอร์/การันตีเว่อร์ → กังวลขึ้น เริ่มเย็นชาหรือกดดันกลับ
+- ใช้คำต้องห้าม หรือทำให้รู้สึกเหมือนโดนหลอก → เสียความเชื่อใจหนัก
+กติกา: พูดสั้นเหมือนแชท LINE 1-2 ประโยค ใช้คำลูกค้าจริง ("อ่อครับๆ" "เท่าไหร่ครับ" "ขอดูก่อน") อย่าปิดดีลง่ายๆ ต้องให้เซลทำงานจนคุณมั่นใจจริง อยู่ในบทเสมอ ห้ามบอกว่าเป็น AI ตอบภาษาไทยเท่านั้น`;
+
+  const customerTurn = async (history, sc, m) => {
     setLoading(true);
-    const system = `คุณกำลังสวมบทเป็น "ลูกค้าคนไทย" ที่คุยกับพนักงานขายของ DEAL! (ธุรกิจให้คนเป็นเจ้าของร่วมในตู้หยอดเหรียญ เช่น ตู้ชกมวย).
-สถานการณ์: ${sc.brief}
-กติกา: พูดเหมือนแชท Facebook สั้นๆ ทีละ 1-2 ประโยค · ท้าทายตามสมจริง อย่าเชื่อหรือปิดดีลง่ายๆ · ถ้าพนักงานตอบดีมีหลักฐานค่อยอ่อนลง · อยู่ในบทเสมอ ห้ามหลุดบท ห้ามเฉลยว่าเป็น AI · ตอบภาษาไทยเท่านั้น`;
     const apiMsgs = history.length === 0
-      ? [{ role: "user", content: "เริ่มบทสนทนา ทักพนักงานขายมาสั้นๆ ตามสถานการณ์" }]
-      : history.map((m) => ({ role: m.role === "customer" ? "assistant" : "user", content: m.text }));
+      ? [{ role: "user", content: `เริ่มบทสนทนา ทักพนักงานขายมาสั้นๆ ตามบทและอารมณ์${sc.opening ? ` แนวๆ "${sc.opening}"` : ""}` }]
+      : history.map((x) => ({ role: x.role === "customer" ? "assistant" : "user", content: x.text }));
     try {
-      const text = await askAI({ system, messages: apiMsgs });
-      setMsgs((m) => [...m, { role: "customer", text: text || "…" }]);
+      const text = await askAI({ system: custSystem(sc, m), messages: apiMsgs });
+      setMsgs((prev) => [...prev, { role: "customer", text: text || "…" }]);
     } catch {
-      setMsgs((m) => [...m, { role: "customer", text: "(เชื่อมต่อ AI ไม่ได้ — ตรวจว่าตั้ง ANTHROPIC_API_KEY ใน Cloudflare แล้ว)" }]);
+      setMsgs((prev) => [...prev, { role: "customer", text: "(เชื่อมต่อ AI ไม่ได้ — ตรวจว่าตั้ง ANTHROPIC_API_KEY ใน Cloudflare แล้ว)" }]);
     } finally { setLoading(false); }
   };
+
+  const start = (sc) => {
+    const m = MOODS[Math.floor(Math.random() * MOODS.length)];
+    setScenario(sc); setMood(m); setMsgs([]); setViolations([]); setDecision(null); setGrade(null); setPhase("chat");
+    customerTurn([], sc, m);
+  };
+
   const send = () => {
-    const text = input.trim(); if (!text || loading) return;
+    const text = input.trim(); if (!text || loading || busy) return;
     const hit = FORBIDDEN_WORDS.filter((w) => text.toLowerCase().includes(w.toLowerCase()));
     if (hit.length) setViolations((v) => [...new Set([...v, ...hit])]);
     const next = [...msgs, { role: "sale", text, flagged: hit }];
-    setMsgs(next); setInput(""); customerTurn(scenario, next);
+    setMsgs(next); setInput(""); customerTurn(next, scenario, mood);
   };
-  const gradeSession = async () => {
-    setGrading(true);
+
+  const decide = async () => {
+    if (busy || loading) return;
+    setBusy(true);
     const transcript = msgs.map((m) => `${m.role === "customer" ? "ลูกค้า" : "เซล"}: ${m.text}`).join("\n");
-    const system = `คุณเป็นหัวหน้าทีมขายที่เข้มงวดของ DEAL! ประเมินการซ้อมจาก transcript
-เกณฑ์: (1) รับมือ objection ได้ไหม (2) แนบความเสี่ยง/ไม่การันตีผลตอบแทน (3) ไม่ใช้คำต้องห้าม [ลงทุน/นักลงทุน/ปันผล/passive income] (4) ปิดด้วย next action ชัดเจน
-ตอบเป็น JSON ล้วน ไม่มี markdown: {"score":<0-100>,"passed":<true ถ้า>=80>,"feedback":["<ไทยสั้นๆ>","...","..."]}`;
+    const sys = `${custSystem(scenario, mood)}
+
+ตอนนี้บทสนทนากำลังจะจบ (พนักงานลองปิดการขายหรือหมดมุกแล้ว) ให้คุณตัดสินใจขั้นสุดท้ายตาม logic จากทั้งบทสนทนาอย่างซื่อตรง — อย่าลำเอียงให้ผ่านหรือไม่ผ่าน ตัดสินตามที่เกิดขึ้นจริง:
+- ถ้า concern สำคัญถูกแก้ + เชื่อใจพอ + ไม่โดนกดดันจนอึดอัด → "buy"
+- ถ้ายังมี concern ค้าง หรืออยากได้ข้อมูล/เวลาเพิ่มก่อนตัดสินใจ → "think"
+- ถ้า concern สำคัญไม่ถูกแก้ / เสียความเชื่อใจ / เจอคำต้องห้าม / โดนกดดันเกินไป → "reject"
+ตอบเป็น JSON ล้วนไม่มี markdown: {"decision":"buy|think|reject","customerLine":"<ประโยคปิดท้ายที่ลูกค้าพูด in-character ไทย>","reason":"<เหตุผลจริงในใจว่าทำไมตัดสินใจแบบนี้ ไทย 1-2 ประโยค>","unresolved":["<เรื่องที่ยังค้างใจ ถ้ามี>"]}`;
     try {
-      let t = await askAI({ system, messages: [{ role: "user", content: transcript }] });
+      let t = await askAI({ system: sys, messages: [{ role: "user", content: transcript || "(ยังไม่ได้คุยอะไรเป็นชิ้นเป็นอัน)" }] });
+      t = t.replace(/```json|```/g, "").trim();
+      const d = JSON.parse(t);
+      if (d.customerLine) setMsgs((prev) => [...prev, { role: "customer", text: d.customerLine }]);
+      setDecision(d); setPhase("decided");
+    } catch {
+      setDecision({ decision: "think", reason: "ประมวลผลไม่สำเร็จ ลองใหม่อีกครั้ง", unresolved: [] }); setPhase("decided");
+    } finally { setBusy(false); }
+  };
+
+  const gradeSession = async () => {
+    if (busy) return;
+    setBusy(true);
+    const transcript = msgs.map((m) => `${m.role === "customer" ? "ลูกค้า" : "เซล"}: ${m.text}`).join("\n");
+    const outcome = decision ? `\n\nผลลัพธ์จริง: ลูกค้า${decision.decision === "buy" ? "ตัดสินใจซื้อ" : decision.decision === "think" ? "ขอคิดดูก่อน (ยังไม่ปิด)" : "ไม่ซื้อ"} — เหตุผล: ${decision.reason}` : "";
+    const system = `คุณเป็นหัวหน้าทีมขายที่เข้มงวดของ DEAL! ประเมินการซ้อมของพนักงานจาก transcript และผลลัพธ์การตัดสินใจของลูกค้า
+${BUSINESS_CONTEXT}
+เกณฑ์ให้คะแนน:
+(1) รับมือ objection ได้ไหม โดยเฉพาะ ค่าใช้จ่ายหัก / รายได้-ขอหลักฐาน / โลเคชั่น
+(2) แนบความเสี่ยง ไม่การันตีผลตอบแทน
+(3) ไม่ใช้คำต้องห้าม [ลงทุน/นักลงทุน/ผู้ลงทุน/หารลงทุน/ปันผล/เงินปันผล/passive income] — ใช้แม้คำเดียว = passed=false
+(4) ไม่มั่วข้อมูลที่ยังไม่ยืนยัน ต้องบอกว่าจะเช็คให้
+(5) qualify ก่อนเสนอราคา / ปิดด้วย next action ชัด (ขอเบอร์นัดโทร)
+(6) ถ้าลูกค้าติดด่านหลังตกลง ต้องไม่ปล่อยค้าง / handoff ชัด / scarcity พอดี
+ให้คะแนนสอดคล้องกับผลลัพธ์จริง (ปิดได้=ทำได้ดี, ไม่ซื้อ=ต้องวิเคราะห์ว่าพลาดตรงไหน)
+ตอบ JSON ล้วนไม่มี markdown: {"score":<0-100>,"passed":<true ถ้า>=80>,"feedback":["<ไทยสั้นๆ ชี้จุดดี/ต้องแก้>","...","..."]}`;
+    try {
+      let t = await askAI({ system, messages: [{ role: "user", content: transcript + outcome }] });
       t = t.replace(/```json|```/g, "").trim();
       const g = JSON.parse(t);
       if (violations.length) { g.passed = false; g.score = Math.min(g.score, 50); }
       setGrade(g);
     } catch { setGrade({ score: 0, passed: false, feedback: ["ประเมินไม่สำเร็จ ลองใหม่อีกครั้ง"] }); }
-    finally { setGrading(false); }
+    finally { setBusy(false); }
   };
 
-  if (!scenario) {
+  /* ---- SELECT ---- */
+  if (phase === "select") {
     return (
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 20px 80px" }}>
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 20px 80px" }}>
         <button className="f" onClick={onBack} style={btnG}><ChevronLeft size={16} /> กลับ</button>
-        <h2 style={{ fontSize: 24, fontWeight: 800, margin: "16px 0 6px" }}>เลือกสถานการณ์ลูกค้า</h2>
-        <p style={{ color: BRAND.sub, fontSize: 14, marginBottom: 20 }}>ลูกค้าจำลองโต้ตอบเหมือนจริง ระบบจับคำต้องห้ามสดๆ และให้หัวหน้า AI ประเมินตอนจบ</p>
-        {SCENARIOS.map((sc) => (
-          <button key={sc.id} className="f" onClick={() => start(sc)} style={{ ...row, cursor: "pointer" }}>
-            <div style={{ textAlign: "left" }}>
-              <div style={{ fontWeight: 600, fontSize: 15 }}>{sc.label}</div>
-              <div style={{ fontSize: 13, color: BRAND.sub }}>{sc.brief}</div>
-            </div>
-            <Swords size={18} color={BRAND.red} />
-          </button>
-        ))}
+        <h2 style={{ fontSize: 26, fontWeight: 800, margin: "16px 0 4px" }}>สนามซ้อมกับลูกค้าจำลอง</h2>
+        <p style={{ color: BRAND.sub, fontSize: 14.5, marginBottom: 22, lineHeight: 1.6 }}>
+          ลูกค้า AI คิดเป็น มีอารมณ์ต่างกันทุกครั้ง และ<b>ตัดสินใจซื้อ/ไม่ซื้อตามที่คุณคุยจริง</b> · ระบบจับคำต้องห้ามสดๆ และให้หัวหน้า AI ประเมินตอนจบ
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(330px,1fr))", gap: 14 }}>
+          {SCENARIOS.map((sc) => (
+            <button key={sc.id} className="f pcard" onClick={() => start(sc)}
+              style={{ textAlign: "left", background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 16, padding: 18, cursor: "pointer" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#F0EEE9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><User size={18} color={BRAND.red} /></div>
+                <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.3 }}>{sc.label}</div>
+              </div>
+              <div style={{ fontSize: 13, color: BRAND.sub, lineHeight: 1.5 }}>{sc.brief}</div>
+              <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: BRAND.red }}><Swords size={14} /> เริ่มซ้อม</div>
+            </button>
+          ))}
+        </div>
       </div>
     );
   }
+
+  /* ---- CHAT / DECIDED ---- */
+  const decoIcon = decision?.decision === "buy" ? <Handshake size={22} color={BRAND.green} />
+    : decision?.decision === "reject" ? <XCircle size={22} color={BRAND.red} /> : <Clock size={22} color={BRAND.amber} />;
+  const decoColor = decision?.decision === "buy" ? BRAND.green : decision?.decision === "reject" ? BRAND.red : BRAND.amber;
+  const decoLabel = decision?.decision === "buy" ? "ลูกค้าตัดสินใจ: ซื้อ! ✅" : decision?.decision === "reject" ? "ลูกค้าตัดสินใจ: ไม่ซื้อ" : "ลูกค้า: ขอคิดดูก่อน";
+  const decoBg = decision?.decision === "buy" ? "#EAF3EE" : decision?.decision === "reject" ? "#F7EAEA" : "#FBF3E3";
+
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 24px", display: "flex", flexDirection: "column", height: "100vh" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <button className="f" onClick={() => setScenario(null)} style={btnG}><ChevronLeft size={16} /> เปลี่ยนสถานการณ์</button>
-        <div style={{ fontSize: 13, fontWeight: 600, color: BRAND.red }}>{scenario.label}</div>
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "14px 16px 20px", display: "flex", flexDirection: "column", height: "100vh" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        <button className="f" onClick={() => setPhase("select")} style={{ ...btnG, padding: "8px 10px" }}><ChevronLeft size={16} /></button>
+        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#F0EEE9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><User size={20} color={BRAND.red} /></div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 14.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{scenario.label}</div>
+          <div style={{ fontSize: 12, color: BRAND.sub }}>{loading ? "กำลังพิมพ์…" : phase === "decided" ? "จบการสนทนา" : "ลูกค้าจำลอง · ออนไลน์"}</div>
+        </div>
       </div>
+
       {violations.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F7EAEA", border: `1px solid ${BRAND.red}`, color: BRAND.red, borderRadius: 10, padding: "8px 12px", fontSize: 13, marginBottom: 8 }}>
           <ShieldAlert size={16} /> ใช้คำต้องห้าม: {violations.join(", ")} — ห้ามพูดกับลูกค้าจริง
         </div>
       )}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 14, padding: 14 }}>
+
+      <div ref={scrollRef} className="rp-msgs" style={{ flex: 1, overflowY: "auto", background: BRAND.bg, border: `1px solid ${BRAND.line}`, borderRadius: 16, padding: 14 }}>
         {msgs.map((m, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: m.role === "sale" ? "flex-end" : "flex-start", marginBottom: 10 }}>
-            <div style={{ maxWidth: "78%", padding: "9px 13px", borderRadius: 14, fontSize: 14.5, lineHeight: 1.5,
-              background: m.role === "sale" ? (m.flagged?.length ? "#F7EAEA" : BRAND.ink) : "#F0EEE9",
+          <div key={i} className="bin" style={{ display: "flex", justifyContent: m.role === "sale" ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, marginBottom: 10 }}>
+            {m.role === "customer" && <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#EDE9E2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><User size={14} color={BRAND.sub} /></div>}
+            <div style={{ maxWidth: "76%", padding: "10px 14px", borderRadius: 16, fontSize: 14.5, lineHeight: 1.5,
+              background: m.role === "sale" ? (m.flagged?.length ? "#F7EAEA" : BRAND.ink) : BRAND.card,
               color: m.role === "sale" ? (m.flagged?.length ? BRAND.red : "#fff") : BRAND.ink,
-              border: m.flagged?.length ? `1px solid ${BRAND.red}` : "none" }}>{m.text}</div>
+              border: m.role === "sale" ? (m.flagged?.length ? `1px solid ${BRAND.red}` : "none") : `1px solid ${BRAND.line}`,
+              borderBottomRightRadius: m.role === "sale" ? 4 : 16, borderBottomLeftRadius: m.role === "customer" ? 4 : 16 }}>{m.text}</div>
           </div>
         ))}
-        {loading && <div style={{ fontSize: 13, color: BRAND.sub }}>ลูกค้ากำลังพิมพ์…</div>}
-      </div>
-      {grade && (
-        <div style={{ background: grade.passed ? "#EAF3EE" : "#F7EAEA", border: `1px solid ${grade.passed ? BRAND.green : BRAND.red}`, borderRadius: 14, padding: 16, margin: "10px 0" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 16, marginBottom: 6 }}>
-            {grade.passed ? <Award size={18} color={BRAND.green} /> : <AlertTriangle size={18} color={BRAND.red} />}
-            คะแนน {grade.score}/100 — {grade.passed ? "ผ่าน พร้อมออกสนามจริง" : "ยังไม่ผ่าน ซ้อมอีกรอบ"}
+        {loading && (
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+            <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#EDE9E2", display: "flex", alignItems: "center", justifyContent: "center" }}><User size={14} color={BRAND.sub} /></div>
+            <div className="typing" style={{ background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 16, borderBottomLeftRadius: 4 }}><i></i><i></i><i></i></div>
           </div>
-          <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 13.5 }}>{grade.feedback?.map((f, i) => <li key={i} style={{ marginBottom: 3 }}>{f}</li>)}</ul>
+        )}
+      </div>
+
+      {decision && (
+        <div className="bin" style={{ background: decoBg, border: `1px solid ${decoColor}`, borderRadius: 16, padding: 16, marginTop: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, fontSize: 16, marginBottom: 6, color: decoColor }}>{decoIcon} {decoLabel}</div>
+          <div style={{ fontSize: 13.5, color: BRAND.ink, lineHeight: 1.6 }}><b>เหตุผลของลูกค้า:</b> {decision.reason}</div>
+          {decision.unresolved?.length > 0 && (
+            <div style={{ fontSize: 13, color: BRAND.sub, marginTop: 6 }}>ยังค้างใจ: {decision.unresolved.join(" · ")}</div>
+          )}
         </div>
       )}
-      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-        <input className="f" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="พิมพ์ตอบลูกค้า…" style={{ ...inp, margin: 0, flex: 1 }} />
-        <button className="f" onClick={send} disabled={loading} style={{ ...btnP, padding: "0 16px" }}><Send size={16} /></button>
-      </div>
-      {msgs.length >= 4 && !grade && (
-        <button className="f" onClick={gradeSession} disabled={grading} style={{ ...btnG, justifyContent: "center", marginTop: 8 }}>
-          {grading ? "กำลังประเมิน…" : "จบการซ้อม & ให้หัวหน้า AI ประเมินผล"}
+
+      {grade && (
+        <div className="bin" style={{ background: grade.passed ? "#EAF3EE" : "#F7EAEA", border: `1px solid ${grade.passed ? BRAND.green : BRAND.red}`, borderRadius: 16, padding: 16, marginTop: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 16, marginBottom: 6 }}>
+            {grade.passed ? <Award size={18} color={BRAND.green} /> : <AlertTriangle size={18} color={BRAND.red} />}
+            หัวหน้าให้ {grade.score}/100 — {grade.passed ? "ผ่าน พร้อมออกสนามจริง" : "ยังไม่ผ่าน ซ้อมอีกรอบ"}
+          </div>
+          <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 13.5, lineHeight: 1.6 }}>{grade.feedback?.map((f, i) => <li key={i} style={{ marginBottom: 3 }}>{f}</li>)}</ul>
+        </div>
+      )}
+
+      {phase === "chat" && (
+        <>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <input className="f" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="พิมพ์ตอบลูกค้า…" style={{ ...inp, margin: 0, flex: 1 }} disabled={busy} />
+            <button className="f" onClick={send} disabled={loading || busy} style={{ ...btnP, padding: "0 16px" }}><Send size={16} /></button>
+          </div>
+          {saleTurns >= 2 && (
+            <button className="f" onClick={decide} disabled={busy || loading}
+              style={{ ...btnP, background: BRAND.ink, justifyContent: "center", marginTop: 8 }}>
+              <Handshake size={16} /> {busy ? "ลูกค้ากำลังตัดสินใจ…" : "ปิดการขาย / จบการซ้อม"}
+            </button>
+          )}
+        </>
+      )}
+
+      {phase === "decided" && !grade && (
+        <button className="f" onClick={gradeSession} disabled={busy} style={{ ...btnP, justifyContent: "center", marginTop: 10 }}>
+          {busy ? "หัวหน้ากำลังประเมิน…" : "ขอผลประเมินจากหัวหน้า AI"}
+        </button>
+      )}
+      {phase === "decided" && grade && (
+        <button className="f" onClick={() => setPhase("select")} style={{ ...btnG, justifyContent: "center", marginTop: 10 }}>
+          <RotateCcw size={15} /> ซ้อมสถานการณ์ใหม่
         </button>
       )}
     </div>
