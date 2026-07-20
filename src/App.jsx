@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  Lock, CheckCircle2, Play, Swords, LogOut, ChevronLeft, RotateCcw, Send,
+  Lock, CheckCircle2, Play, Swords, LogOut, ChevronLeft, ChevronRight, RotateCcw, Send,
   ShieldAlert, Award, Circle, AlertTriangle, Settings, GraduationCap, PlayCircle,
 } from "lucide-react";
 import { SCENARIOS, FORBIDDEN_WORDS, AI_MODEL } from "./content.js";
@@ -18,7 +18,6 @@ async function askAI({ system, messages }) {
   return data.content?.filter((c) => c.type === "text").map((c) => c.text).join("\n").trim() || "";
 }
 
-/* ---- รองรับ YouTube + .mp4 ---- */
 function ytId(url = "") {
   const m = String(url).match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([\w-]{11})/);
   return m ? m[1] : null;
@@ -78,7 +77,6 @@ export default function App() {
     const next = { ...progress, __final: { passed } };
     setProgress(next); if (user) saveProgress(user.empId, next);
   };
-
   const login = (name, empId) => {
     const u = { name: name.trim(), empId: empId.trim() };
     setUser(u); saveUser(u); setProgress(loadProgress(u.empId)); setScreen("dashboard");
@@ -90,8 +88,21 @@ export default function App() {
       <style>{`
         *{font-family:'Plus Jakarta Sans','Anuphan',sans-serif;box-sizing:border-box}
         .f:focus-visible{outline:2px solid ${BRAND.red};outline-offset:2px}
-        .lc{transition:transform .15s, box-shadow .15s}
-        .lc:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(43,43,43,.10)}
+        .wrap{display:flex;max-width:1200px;margin:0 auto;min-height:100vh}
+        .side{width:266px;flex-shrink:0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;padding:28px 16px;border-right:1px solid ${BRAND.line}}
+        .main{flex:1;min-width:0;padding:40px 44px 90px}
+        .shelf{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;padding:4px 2px 16px}
+        .shelf::-webkit-scrollbar{height:6px}
+        .shelf::-webkit-scrollbar-thumb{background:${BRAND.line};border-radius:99px}
+        .shelf::-webkit-scrollbar-track{background:transparent}
+        .card{flex:0 0 300px;scroll-snap-align:start}
+        .lc{transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s}
+        .lc:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(43,43,43,.12)}
+        .navitem{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:7px 9px;border:none;background:transparent;border-radius:9px;cursor:pointer;font-size:12.5px;color:${BRAND.ink};line-height:1.3}
+        .navitem:hover{background:#EFEBE4}
+        .arrow{width:34px;height:34px;border-radius:50%;border:1px solid ${BRAND.line};background:${BRAND.card};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:${BRAND.ink}}
+        .arrow:hover{background:#F0EEE9}
+        @media(max-width:920px){.side{display:none}.main{padding:24px 18px 80px}}
         @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
       `}</style>
 
@@ -139,115 +150,153 @@ function Login({ onLogin }) {
   );
 }
 
-/* ---------------- DASHBOARD (grid การ์ด) ---------------- */
-function Dashboard({ user, curriculum, progress, watchedCount, total, allWatched, finalPassed, unlocked, previewUnlock, onOpen, onExam, onRoleplay, onLogout }) {
+/* ---------------- DASHBOARD (sidebar + shelves) ---------------- */
+const Dot = ({ on }) => <span style={{ width: 8, height: 8, borderRadius: "50%", background: on ? BRAND.green : BRAND.line, flexShrink: 0 }} />;
+
+function Sidebar({ user, curriculum, progress, watchedCount, total, allWatched, finalPassed, unlocked, onOpen, onExam, onRoleplay, onLogout }) {
   const pct = Math.round((watchedCount / total) * 100);
   return (
-    <div style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 20px 80px" }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
-        <div>
-          <div style={{ fontWeight: 800, letterSpacing: "0.16em", fontSize: 12, color: BRAND.red }}>DEAL! SALES ACADEMY</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>สวัสดี {user.name}</div>
-          <div style={{ fontSize: 13, color: BRAND.sub }}>รหัส {user.empId}</div>
-        </div>
-        <button className="f" onClick={onLogout} style={btnG}><LogOut size={15} /> ออก</button>
-      </header>
+    <aside className="side">
+      <div style={{ fontWeight: 800, letterSpacing: "0.14em", fontSize: 11, color: BRAND.red }}>DEAL! SALES ACADEMY</div>
+      <div style={{ fontSize: 16, fontWeight: 700, marginTop: 6 }}>{user.name}</div>
+      <div style={{ fontSize: 12, color: BRAND.sub, marginBottom: 16 }}>รหัส {user.empId}</div>
 
-      <div style={{ background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 16, padding: 18, marginBottom: 24 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 8 }}>
-          <span style={{ fontWeight: 600 }}>ดูคลิปแล้ว {watchedCount}/{total} บท</span>
-          {finalPassed && <span style={{ color: BRAND.green, fontWeight: 600 }}>สอบใหญ่ผ่านแล้ว ✓</span>}
-        </div>
-        <div style={{ height: 10, background: BRAND.line, borderRadius: 999 }}>
-          <div style={{ width: `${pct}%`, height: "100%", background: allWatched ? BRAND.green : BRAND.red, borderRadius: 999, transition: "width .4s" }} />
-        </div>
+      <div style={{ fontSize: 12, color: BRAND.sub, marginBottom: 6 }}>ดูแล้ว {watchedCount}/{total} บท{finalPassed ? " · สอบผ่าน ✓" : ""}</div>
+      <div style={{ height: 7, background: BRAND.line, borderRadius: 999, marginBottom: 20 }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: allWatched ? BRAND.green : BRAND.red, borderRadius: 999, transition: "width .4s" }} />
       </div>
 
-      {curriculum.map((mod) => (
-        <section key={mod.module} style={{ marginBottom: 26 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>{mod.module}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
-            {mod.lessons.map((l, i) => (
-              <LessonCard key={l.id} lesson={l} idx={i + 1} watched={!!progress[l.id]?.watched} onOpen={() => onOpen(l)} />
-            ))}
-          </div>
-        </section>
+      {curriculum.map((m) => (
+        <div key={m.module} style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, padding: "0 9px" }}>{m.module}</div>
+          {m.lessons.map((l) => (
+            <button key={l.id} className="navitem f" onClick={() => onOpen(l)}>
+              <Dot on={!!progress[l.id]?.watched} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.title}</span>
+            </button>
+          ))}
+        </div>
       ))}
 
-      {/* ข้อสอบใหญ่ */}
-      <section style={{ marginTop: 10, marginBottom: 18 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>ก่อนออกสนาม · ข้อสอบใหญ่</div>
-        <div style={{ background: allWatched ? BRAND.card : "#EFEBE4", border: `1px solid ${finalPassed ? BRAND.green : BRAND.line}`, borderRadius: 16, padding: 22 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-            {finalPassed ? <CheckCircle2 size={22} color={BRAND.green} /> : allWatched ? <GraduationCap size={22} color={BRAND.red} /> : <Lock size={22} color={BRAND.sub} />}
-            <div style={{ fontWeight: 700, fontSize: 17 }}>ข้อสอบใหญ่ (รวมทุกบท)</div>
-          </div>
-          <p style={{ fontSize: 14, color: BRAND.sub, margin: "0 0 16px" }}>
-            {finalPassed ? "ผ่านแล้ว ✓ ปลดล็อกสนามซ้อมด้านล่างแล้ว"
-              : allWatched ? "รวมคำถามจากทุกบท ต้องตอบถูก 100% ถึงจะผ่านและปลดสนามซ้อม"
-                : `ต้องดูคลิปให้ครบทุกบทก่อน — ตอนนี้ดูแล้ว ${watchedCount}/${total} บท`}
-          </p>
-          <button className="f" onClick={() => allWatched && onExam()} disabled={!allWatched}
-            style={{ ...btnP, background: finalPassed ? BRAND.green : allWatched ? BRAND.red : "#B9B3AA", cursor: allWatched ? "pointer" : "not-allowed" }}>
-            {finalPassed ? "ทำข้อสอบอีกครั้ง" : allWatched ? "เริ่มทำข้อสอบใหญ่" : "ยังล็อกอยู่"}
-          </button>
-        </div>
-      </section>
+      <div style={{ borderTop: `1px solid ${BRAND.line}`, margin: "10px 0", paddingTop: 10 }}>
+        <button className="navitem f" onClick={() => allWatched && onExam()} style={{ opacity: allWatched ? 1 : 0.5 }}>
+          {finalPassed ? <CheckCircle2 size={13} color={BRAND.green} /> : <GraduationCap size={13} color={allWatched ? BRAND.red : BRAND.sub} />}
+          <span>ข้อสอบใหญ่</span>
+        </button>
+        <button className="navitem f" onClick={() => unlocked && onRoleplay()} style={{ opacity: unlocked ? 1 : 0.5 }}>
+          {unlocked ? <Swords size={13} color={BRAND.green} /> : <Lock size={13} color={BRAND.sub} />}
+          <span>สนามซ้อม AI</span>
+        </button>
+      </div>
+      <button className="navitem f" onClick={onLogout} style={{ color: BRAND.sub }}><LogOut size={13} /> ออกจากระบบ</button>
+    </aside>
+  );
+}
 
-      {/* สนามซ้อม */}
-      <section>
-        <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>ด่านสุดท้าย · สนามซ้อมกับลูกค้าจริง</div>
-        <div style={{ background: unlocked ? BRAND.card : "#EFEBE4", border: `1px solid ${unlocked ? BRAND.green : BRAND.line}`, borderRadius: 16, padding: 22 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-            {unlocked ? <Swords size={22} color={BRAND.green} /> : <Lock size={22} color={BRAND.sub} />}
-            <div style={{ fontWeight: 700, fontSize: 17 }}>สนามซ้อม AI — รับมือลูกค้าก่อนของจริง</div>
+function ModuleRow({ mod, progress, onOpen }) {
+  const ref = useRef(null);
+  const scroll = (d) => ref.current?.scrollBy({ left: d * 336, behavior: "smooth" });
+  return (
+    <section style={{ marginBottom: 38 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
+        <h3 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>{mod.module}</h3>
+        {mod.lessons.length > 2 && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="arrow f" onClick={() => scroll(-1)} aria-label="เลื่อนซ้าย"><ChevronLeft size={18} /></button>
+            <button className="arrow f" onClick={() => scroll(1)} aria-label="เลื่อนขวา"><ChevronRight size={18} /></button>
           </div>
-          {previewUnlock && !finalPassed && (
-            <div style={{ display: "inline-block", fontSize: 12, fontWeight: 600, color: BRAND.amber, background: "#FBF3E3", border: `1px solid ${BRAND.amber}`, borderRadius: 8, padding: "3px 8px", marginBottom: 10 }}>
-              โหมดทดสอบ (ปลดล็อกชั่วคราวสำหรับผู้ดูแล)
-            </div>
-          )}
-          <p style={{ fontSize: 14, color: BRAND.sub, margin: "0 0 16px" }}>
-            {unlocked ? "ซ้อมคุยกับลูกค้าจำลอง ระบบจับคำต้องห้ามสดๆ และประเมินผลตอนจบ" : "ต้องสอบใหญ่ผ่าน 100% ก่อนถึงจะปลดล็อก"}
-          </p>
-          <button className="f" onClick={() => unlocked && onRoleplay()} disabled={!unlocked}
-            style={{ ...btnP, background: unlocked ? BRAND.green : "#B9B3AA", cursor: unlocked ? "pointer" : "not-allowed" }}>
-            {unlocked ? "เข้าสนามซ้อม" : "ยังล็อกอยู่"}
-          </button>
-        </div>
-      </section>
-    </div>
+        )}
+      </div>
+      <div className="shelf" ref={ref}>
+        {mod.lessons.map((l, i) => (
+          <div className="card" key={l.id}>
+            <LessonCard lesson={l} idx={i + 1} watched={!!progress[l.id]?.watched} onOpen={() => onOpen(l)} />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
 function LessonCard({ lesson, idx, watched, onOpen }) {
   return (
     <button className="f lc" onClick={onOpen}
-      style={{ display: "block", textAlign: "left", padding: 0, background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 14, overflow: "hidden", cursor: "pointer", width: "100%" }}>
+      style={{ display: "block", textAlign: "left", padding: 0, background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 18, overflow: "hidden", cursor: "pointer", width: "100%" }}>
       <div style={{ position: "relative", aspectRatio: "16/9", background: "linear-gradient(135deg,#2B2B2B,#4a3a3a)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {lesson.thumbnail
           ? <img src={lesson.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : <PlayCircle size={40} color="rgba(255,255,255,.85)" />}
-        {watched && (
-          <div style={{ position: "absolute", top: 8, right: 8, background: BRAND.green, color: "#fff", borderRadius: 999, padding: "3px 9px", fontSize: 11.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
-            <CheckCircle2 size={12} /> ดูแล้ว
-          </div>
-        )}
-        {!watched && (
-          <div style={{ position: "absolute", top: 8, left: 8, background: "rgba(0,0,0,.55)", color: "#fff", borderRadius: 8, padding: "2px 8px", fontSize: 11.5, fontWeight: 700 }}>บทที่ {idx}</div>
-        )}
+          : <PlayCircle size={44} color="rgba(255,255,255,.85)" />}
+        {watched
+          ? <div style={{ position: "absolute", top: 10, right: 10, background: BRAND.green, color: "#fff", borderRadius: 999, padding: "3px 10px", fontSize: 11.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}><CheckCircle2 size={12} /> ดูแล้ว</div>
+          : <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(0,0,0,.55)", color: "#fff", borderRadius: 8, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>บทที่ {idx}</div>}
       </div>
-      <div style={{ padding: "12px 14px 14px" }}>
-        <div style={{ fontWeight: 600, fontSize: 14.5, lineHeight: 1.35, marginBottom: 6, minHeight: 40 }}>{lesson.title}</div>
+      <div style={{ padding: "14px 16px 16px" }}>
+        <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.4, marginBottom: 8, minHeight: 42 }}>{lesson.title}</div>
         <div style={{ fontSize: 12.5, color: watched ? BRAND.green : BRAND.sub, display: "flex", alignItems: "center", gap: 5 }}>
-          {watched ? <>เรียนจบแล้ว</> : <><Play size={12} /> ยังไม่ได้ดู</>}
+          {watched ? "เรียนจบแล้ว" : <><Play size={12} /> ยังไม่ได้ดู</>}
         </div>
       </div>
     </button>
   );
 }
 
-/* ---------------- LESSON (ดูคลิปอย่างเดียว) ---------------- */
+function Dashboard(props) {
+  const { curriculum, progress, watchedCount, total, allWatched, finalPassed, unlocked, previewUnlock, onOpen, onExam, onRoleplay } = props;
+  return (
+    <div className="wrap">
+      <Sidebar {...props} />
+      <main className="main">
+        <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px" }}>การอบรมของคุณ</h1>
+        <p style={{ color: BRAND.sub, fontSize: 15, margin: "0 0 32px" }}>ดูคลิปให้ครบทุกบท แล้วสอบใหญ่ให้ผ่านเพื่อปลดสนามซ้อม</p>
+
+        {curriculum.map((mod) => <ModuleRow key={mod.module} mod={mod} progress={progress} onOpen={onOpen} />)}
+
+        <section style={{ marginTop: 6, marginBottom: 20, maxWidth: 640 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>ก่อนออกสนาม · ข้อสอบใหญ่</div>
+          <div style={{ background: allWatched ? BRAND.card : "#EFEBE4", border: `1px solid ${finalPassed ? BRAND.green : BRAND.line}`, borderRadius: 18, padding: 22 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+              {finalPassed ? <CheckCircle2 size={22} color={BRAND.green} /> : allWatched ? <GraduationCap size={22} color={BRAND.red} /> : <Lock size={22} color={BRAND.sub} />}
+              <div style={{ fontWeight: 700, fontSize: 17 }}>ข้อสอบใหญ่ (รวมทุกบท)</div>
+            </div>
+            <p style={{ fontSize: 14, color: BRAND.sub, margin: "0 0 16px" }}>
+              {finalPassed ? "ผ่านแล้ว ✓ ปลดล็อกสนามซ้อมด้านล่างแล้ว"
+                : allWatched ? "รวมคำถามจากทุกบท ต้องตอบถูก 100% ถึงจะผ่านและปลดสนามซ้อม"
+                  : `ต้องดูคลิปให้ครบทุกบทก่อน — ตอนนี้ดูแล้ว ${watchedCount}/${total} บท`}
+            </p>
+            <button className="f" onClick={() => allWatched && onExam()} disabled={!allWatched}
+              style={{ ...btnP, background: finalPassed ? BRAND.green : allWatched ? BRAND.red : "#B9B3AA", cursor: allWatched ? "pointer" : "not-allowed" }}>
+              {finalPassed ? "ทำข้อสอบอีกครั้ง" : allWatched ? "เริ่มทำข้อสอบใหญ่" : "ยังล็อกอยู่"}
+            </button>
+          </div>
+        </section>
+
+        <section style={{ maxWidth: 640 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>ด่านสุดท้าย · สนามซ้อมกับลูกค้าจริง</div>
+          <div style={{ background: unlocked ? BRAND.card : "#EFEBE4", border: `1px solid ${unlocked ? BRAND.green : BRAND.line}`, borderRadius: 18, padding: 22 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+              {unlocked ? <Swords size={22} color={BRAND.green} /> : <Lock size={22} color={BRAND.sub} />}
+              <div style={{ fontWeight: 700, fontSize: 17 }}>สนามซ้อม AI — รับมือลูกค้าก่อนของจริง</div>
+            </div>
+            {previewUnlock && !finalPassed && (
+              <div style={{ display: "inline-block", fontSize: 12, fontWeight: 600, color: BRAND.amber, background: "#FBF3E3", border: `1px solid ${BRAND.amber}`, borderRadius: 8, padding: "3px 8px", marginBottom: 10 }}>
+                โหมดทดสอบ (ปลดล็อกชั่วคราวสำหรับผู้ดูแล)
+              </div>
+            )}
+            <p style={{ fontSize: 14, color: BRAND.sub, margin: "0 0 16px" }}>
+              {unlocked ? "ซ้อมคุยกับลูกค้าจำลอง ระบบจับคำต้องห้ามสดๆ และประเมินผลตอนจบ" : "ต้องสอบใหญ่ผ่าน 100% ก่อนถึงจะปลดล็อก"}
+            </p>
+            <button className="f" onClick={() => unlocked && onRoleplay()} disabled={!unlocked}
+              style={{ ...btnP, background: unlocked ? BRAND.green : "#B9B3AA", cursor: unlocked ? "pointer" : "not-allowed" }}>
+              {unlocked ? "เข้าสนามซ้อม" : "ยังล็อกอยู่"}
+            </button>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+/* ---------------- LESSON ---------------- */
 function LessonView({ lesson, st, onBack, onUpdate }) {
   const vidRef = useRef(null);
   const [watchedSec, setWatchedSec] = useState(st.watchedSec || 0);
@@ -268,7 +317,7 @@ function LessonView({ lesson, st, onBack, onUpdate }) {
     <div style={{ maxWidth: 820, margin: "0 auto", padding: "24px 20px 80px" }}>
       <button className="f" onClick={onBack} style={btnG}><ChevronLeft size={16} /> กลับหน้าหลัก</button>
       <h2 style={{ fontSize: 24, fontWeight: 800, margin: "16px 0 12px" }}>{lesson.title}</h2>
-      <div style={{ borderRadius: 14, overflow: "hidden", border: `1px solid ${BRAND.line}`, background: "#000" }}>
+      <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${BRAND.line}`, background: "#000" }}>
         {yt ? (
           <YouTubePlayer videoId={yt} onTime={(t, d) => handleTime(t, d)} onMeta={(d) => setDuration(d)} onEnd={() => onUpdate({ watched: true, watchedSec, duration })} />
         ) : (
@@ -289,7 +338,7 @@ function LessonView({ lesson, st, onBack, onUpdate }) {
   );
 }
 
-/* ---------------- FINAL EXAM (รวมทุกบท) ---------------- */
+/* ---------------- FINAL EXAM ---------------- */
 function FinalExam({ allWatched, onBack, onPass, passedBefore }) {
   const questions = allExamQuestions();
   const [answers, setAnswers] = useState({});
@@ -297,7 +346,6 @@ function FinalExam({ allWatched, onBack, onPass, passedBefore }) {
   const total = questions.length;
   const correct = questions.filter((q, i) => answers[i] === q.correct).length;
   const perfect = submitted && correct === total;
-
   const submit = () => { setSubmitted(true); if (questions.every((q, i) => answers[i] === q.correct)) onPass(); };
   const retry = () => { setAnswers({}); setSubmitted(false); window.scrollTo(0, 0); };
 
@@ -309,15 +357,11 @@ function FinalExam({ allWatched, onBack, onPass, passedBefore }) {
       </div>
     );
   }
-
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 20px 80px" }}>
       <button className="f" onClick={onBack} style={btnG}><ChevronLeft size={16} /> กลับหน้าหลัก</button>
       <h2 style={{ fontSize: 24, fontWeight: 800, margin: "16px 0 4px" }}>ข้อสอบใหญ่</h2>
-      <p style={{ fontSize: 13.5, color: BRAND.sub, marginBottom: 18 }}>
-        รวม {total} ข้อจากทุกบท · ตอบถูก <b>ทุกข้อ (100%)</b> เท่านั้นถึงจะผ่านและปลดสนามซ้อม{passedBefore ? " · เคยผ่านแล้ว" : ""}
-      </p>
-
+      <p style={{ fontSize: 13.5, color: BRAND.sub, marginBottom: 18 }}>รวม {total} ข้อจากทุกบท · ตอบถูก <b>ทุกข้อ (100%)</b> เท่านั้นถึงจะผ่านและปลดสนามซ้อม{passedBefore ? " · เคยผ่านแล้ว" : ""}</p>
       {questions.map((q, i) => (
         <div key={i} style={{ background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 14, padding: 16, marginBottom: 12 }}>
           <div style={{ fontSize: 11.5, color: BRAND.sub, marginBottom: 4 }}>{q.from}</div>
@@ -338,7 +382,6 @@ function FinalExam({ allWatched, onBack, onPass, passedBefore }) {
           })}
         </div>
       ))}
-
       {!submitted && (
         <button className="f" onClick={submit} disabled={Object.keys(answers).length < total}
           style={{ ...btnP, width: "100%", opacity: Object.keys(answers).length < total ? 0.45 : 1 }}>ส่งคำตอบ</button>
@@ -374,7 +417,6 @@ function Roleplay({ allPassed, onBack }) {
   if (!allPassed) return null;
 
   const start = (sc) => { setScenario(sc); setMsgs([]); setViolations([]); setGrade(null); customerTurn(sc, []); };
-
   const customerTurn = async (sc, history) => {
     setLoading(true);
     const system = `คุณกำลังสวมบทเป็น "ลูกค้าคนไทย" ที่คุยกับพนักงานขายของ DEAL! (ธุรกิจให้คนเป็นเจ้าของร่วมในตู้หยอดเหรียญ เช่น ตู้ชกมวย).
@@ -390,7 +432,6 @@ function Roleplay({ allPassed, onBack }) {
       setMsgs((m) => [...m, { role: "customer", text: "(เชื่อมต่อ AI ไม่ได้ — ตรวจว่าตั้ง ANTHROPIC_API_KEY ใน Cloudflare แล้ว)" }]);
     } finally { setLoading(false); }
   };
-
   const send = () => {
     const text = input.trim(); if (!text || loading) return;
     const hit = FORBIDDEN_WORDS.filter((w) => text.toLowerCase().includes(w.toLowerCase()));
@@ -398,7 +439,6 @@ function Roleplay({ allPassed, onBack }) {
     const next = [...msgs, { role: "sale", text, flagged: hit }];
     setMsgs(next); setInput(""); customerTurn(scenario, next);
   };
-
   const gradeSession = async () => {
     setGrading(true);
     const transcript = msgs.map((m) => `${m.role === "customer" ? "ลูกค้า" : "เซล"}: ${m.text}`).join("\n");
@@ -433,7 +473,6 @@ function Roleplay({ allPassed, onBack }) {
       </div>
     );
   }
-
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 24px", display: "flex", flexDirection: "column", height: "100vh" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
