@@ -6,7 +6,7 @@ import {
 import { SCENARIOS, FORBIDDEN_WORDS, AI_MODEL } from "./content.js";
 import {
   BRAND, loadProgress, saveProgress, loadUser, saveUser, clearUser,
-  getCurriculum, flatLessons, fmt,
+  getCurriculum, flatLessons, fmt, loadPreviewUnlock,
 } from "./lib.js";
 
 // เรียก AI ผ่านหลังบ้าน Cloudflare (key ถูกซ่อนฝั่ง server)
@@ -31,6 +31,8 @@ export default function App() {
   const total = lessons.length;
   const passedCount = lessons.filter((l) => progress[l.id]?.quizPassed).length;
   const allPassed = passedCount === total;
+  const previewUnlock = loadPreviewUnlock();
+  const unlocked = allPassed || previewUnlock;
 
   const update = (lessonId, patch) => {
     const next = { ...progress, [lessonId]: { ...(progress[lessonId] || {}), ...patch } };
@@ -56,6 +58,7 @@ export default function App() {
       {screen === "dashboard" && user && (
         <Dashboard user={user} curriculum={curriculum} progress={progress}
           passedCount={passedCount} total={total} allPassed={allPassed}
+          unlocked={unlocked} previewUnlock={previewUnlock}
           onOpen={(l) => { setActiveLesson(l); setScreen("lesson"); }}
           onRoleplay={() => setScreen("roleplay")} onLogout={logout} />
       )}
@@ -63,7 +66,7 @@ export default function App() {
         <LessonView lesson={activeLesson} st={progress[activeLesson.id] || {}}
           onBack={() => setScreen("dashboard")} onUpdate={(p) => update(activeLesson.id, p)} />
       )}
-      {screen === "roleplay" && <Roleplay allPassed={allPassed} onBack={() => setScreen("dashboard")} />}
+      {screen === "roleplay" && <Roleplay allPassed={unlocked} onBack={() => setScreen("dashboard")} />}
     </div>
   );
 }
@@ -95,7 +98,7 @@ function Login({ onLogin }) {
 }
 
 /* ---------------- DASHBOARD ---------------- */
-function Dashboard({ user, curriculum, progress, passedCount, total, allPassed, onOpen, onRoleplay, onLogout }) {
+function Dashboard({ user, curriculum, progress, passedCount, total, allPassed, unlocked, previewUnlock, onOpen, onRoleplay, onLogout }) {
   const pct = Math.round((passedCount / total) * 100);
   return (
     <div style={{ maxWidth: 920, margin: "0 auto", padding: "28px 20px 80px" }}>
@@ -150,18 +153,23 @@ function Dashboard({ user, curriculum, progress, passedCount, total, allPassed, 
         <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
           ด่านสุดท้าย · สนามซ้อมกับลูกค้าจริง
         </div>
-        <div style={{ background: allPassed ? BRAND.card : "#EFEBE4", border: `1px solid ${allPassed ? BRAND.green : BRAND.line}`, borderRadius: 16, padding: 22 }}>
+        <div style={{ background: unlocked ? BRAND.card : "#EFEBE4", border: `1px solid ${unlocked ? BRAND.green : BRAND.line}`, borderRadius: 16, padding: 22 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-            {allPassed ? <Swords size={22} color={BRAND.green} /> : <Lock size={22} color={BRAND.sub} />}
+            {unlocked ? <Swords size={22} color={BRAND.green} /> : <Lock size={22} color={BRAND.sub} />}
             <div style={{ fontWeight: 700, fontSize: 17 }}>สนามซ้อม AI — รับมือลูกค้าก่อนของจริง</div>
           </div>
+          {previewUnlock && !allPassed && (
+            <div style={{ display: "inline-block", fontSize: 12, fontWeight: 600, color: BRAND.amber, background: "#FBF3E3", border: `1px solid ${BRAND.amber}`, borderRadius: 8, padding: "3px 8px", marginBottom: 10 }}>
+              โหมดทดสอบ (ปลดล็อกชั่วคราวสำหรับผู้ดูแล)
+            </div>
+          )}
           <p style={{ fontSize: 14, color: BRAND.sub, margin: "0 0 16px" }}>
-            {allPassed ? "ปลดล็อกแล้ว! ซ้อมคุยกับลูกค้าจำลอง ระบบจับคำต้องห้ามสดๆ และประเมินผลตอนจบ"
+            {unlocked ? "ซ้อมคุยกับลูกค้าจำลอง ระบบจับคำต้องห้ามสดๆ และประเมินผลตอนจบ"
               : `ต้องสอบผ่านครบทั้ง ${total} บท (100% ทุกบท) ก่อนถึงจะปลดล็อก — ตอนนี้ผ่าน ${passedCount}/${total}`}
           </p>
-          <button className="f" onClick={() => allPassed && onRoleplay()} disabled={!allPassed}
-            style={{ ...btnP, background: allPassed ? BRAND.green : "#B9B3AA", cursor: allPassed ? "pointer" : "not-allowed" }}>
-            {allPassed ? "เข้าสนามซ้อม" : "ยังล็อกอยู่"}
+          <button className="f" onClick={() => unlocked && onRoleplay()} disabled={!unlocked}
+            style={{ ...btnP, background: unlocked ? BRAND.green : "#B9B3AA", cursor: unlocked ? "pointer" : "not-allowed" }}>
+            {unlocked ? "เข้าสนามซ้อม" : "ยังล็อกอยู่"}
           </button>
         </div>
       </section>
