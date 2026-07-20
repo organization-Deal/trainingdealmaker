@@ -1,19 +1,16 @@
 import React, { useState } from "react";
-import {
-  ShieldCheck, Download, Save, ChevronLeft, Video, Unlock, Plus, Trash2, Copy,
-} from "lucide-react";
+import { ShieldCheck, Download, Save, ChevronLeft, Video, Image, Unlock, Plus, Trash2, Copy } from "lucide-react";
 import { CURRICULUM, ADMIN_PIN } from "./content.js";
 import {
-  BRAND, loadVideoOverrides, saveVideoOverrides, loadAddedLessons, saveAddedLessons,
-  loadPreviewUnlock, savePreviewUnlock, getCurriculum, buildContentFile, clearLocalContent,
+  BRAND, loadVideoOverrides, saveVideoOverrides, loadThumbOverrides, saveThumbOverrides,
+  loadAddedLessons, saveAddedLessons, loadPreviewUnlock, savePreviewUnlock,
+  getCurriculum, buildContentFile, clearLocalContent,
 } from "./lib.js";
 
 const emptyQuiz = () => ({ q: "", choices: ["", "", "", ""], correct: 0 });
 
 export default function Admin() {
-  const [pin, setPin] = useState("");
-  const [ok, setOk] = useState(false);
-
+  const [pin, setPin] = useState(""); const [ok, setOk] = useState(false);
   if (!ok) {
     return (
       <Shell>
@@ -31,44 +28,39 @@ export default function Admin() {
 }
 
 function Panel() {
-  const [urls, setUrls] = useState(() => {
-    const ov = loadVideoOverrides(); const map = {};
-    getCurriculum().forEach((m) => m.lessons.forEach((l) => { map[l.id] = ov[l.id] || l.videoUrl; }));
-    return map;
-  });
+  const init = () => {
+    const ov = loadVideoOverrides(), tov = loadThumbOverrides();
+    const u = {}, t = {};
+    getCurriculum().forEach((m) => m.lessons.forEach((l) => { u[l.id] = ov[l.id] || l.videoUrl; t[l.id] = tov[l.id] !== undefined ? tov[l.id] : (l.thumbnail || ""); }));
+    return { u, t };
+  };
+  const [{ u: urls0, t: thumbs0 }] = useState(init);
+  const [urls, setUrls] = useState(urls0);
+  const [thumbs, setThumbs] = useState(thumbs0);
   const [added, setAdded] = useState(loadAddedLessons());
   const [preview, setPreview] = useState(loadPreviewUnlock());
-  const [savedMsg, setSavedMsg] = useState("");
-  const [form, setForm] = useState({ module: CURRICULUM[0].module, title: "", videoUrl: "", quiz: [emptyQuiz()] });
+  const [msg, setMsg] = useState("");
+  const [form, setForm] = useState({ module: CURRICULUM[0].module, title: "", videoUrl: "", thumbnail: "", quiz: [emptyQuiz()] });
 
-  const flash = (m) => { setSavedMsg(m); setTimeout(() => setSavedMsg(""), 2000); };
-
-  const saveUrls = () => { saveVideoOverrides(urls); flash("บันทึกลิงก์วิดีโอแล้ว (เครื่องนี้)"); };
-
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(""), 2000); };
+  const saveEdits = () => { saveVideoOverrides(urls); saveThumbOverrides(thumbs); flash("บันทึกแล้ว (เครื่องนี้)"); };
   const togglePreview = () => { const v = !preview; setPreview(v); savePreviewUnlock(v); };
 
-  const formValid = form.title.trim() && form.videoUrl.trim() &&
-    form.quiz.every((q) => q.q.trim() && q.choices.every((c) => c.trim()));
+  const formValid = form.title.trim() && form.videoUrl.trim() && form.quiz.every((q) => q.q.trim() && q.choices.every((c) => c.trim()));
 
   const addLesson = () => {
     const id = "custom-" + Date.now();
-    const lesson = { module: form.module.trim() || "บทเพิ่มเติม", id, title: form.title.trim(), videoUrl: form.videoUrl.trim(), quiz: form.quiz };
-    const next = [...added, lesson];
-    setAdded(next); saveAddedLessons(next);
-    setUrls({ ...urls, [id]: lesson.videoUrl });
-    setForm({ module: CURRICULUM[0].module, title: "", videoUrl: "", quiz: [emptyQuiz()] });
+    const lesson = { module: form.module.trim() || "บทเพิ่มเติม", id, title: form.title.trim(), videoUrl: form.videoUrl.trim(), thumbnail: form.thumbnail.trim(), quiz: form.quiz };
+    const next = [...added, lesson]; setAdded(next); saveAddedLessons(next);
+    setUrls({ ...urls, [id]: lesson.videoUrl }); setThumbs({ ...thumbs, [id]: lesson.thumbnail });
+    setForm({ module: CURRICULUM[0].module, title: "", videoUrl: "", thumbnail: "", quiz: [emptyQuiz()] });
     flash("เพิ่มบทแล้ว");
   };
-
-  const removeAdded = (id) => {
-    const next = added.filter((l) => l.id !== id);
-    setAdded(next); saveAddedLessons(next);
-  };
+  const removeAdded = (id) => { const next = added.filter((l) => l.id !== id); setAdded(next); saveAddedLessons(next); };
 
   const exportFile = () => {
-    saveVideoOverrides(urls);
-    const text = buildContentFile();
-    const blob = new Blob([text], { type: "text/javascript" });
+    saveVideoOverrides(urls); saveThumbOverrides(thumbs);
+    const blob = new Blob([buildContentFile()], { type: "text/javascript" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "content.js"; a.click();
   };
 
@@ -77,16 +69,14 @@ function Panel() {
   return (
     <Shell wide>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <ShieldCheck size={20} color={BRAND.green} />
-        <h1 style={{ fontSize: 24, fontWeight: 800 }}>หลังบ้าน</h1>
+        <ShieldCheck size={20} color={BRAND.green} /><h1 style={{ fontSize: 24, fontWeight: 800 }}>หลังบ้าน</h1>
       </div>
 
-      {/* โหมดทดสอบ */}
       <Card>
         <Row>
           <div>
             <div style={{ fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center", gap: 6 }}><Unlock size={16} color={BRAND.amber} /> ปลดล็อกสนามซ้อม (โหมดทดสอบ)</div>
-            <div style={{ fontSize: 12.5, color: BRAND.sub, marginTop: 2 }}>เปิดเพื่อเข้าสนามซ้อม AI ได้เลยโดยไม่ต้องสอบครบ — มีผลเฉพาะเครื่องนี้ ไม่กระทบเซล</div>
+            <div style={{ fontSize: 12.5, color: BRAND.sub, marginTop: 2 }}>เข้าสนามซ้อม AI ได้เลยโดยไม่ต้องสอบใหญ่ — เฉพาะเครื่องนี้ ไม่กระทบเซล</div>
           </div>
           <button onClick={togglePreview} style={{ ...toggle, background: preview ? BRAND.green : BRAND.line }}>
             <span style={{ ...knob, transform: preview ? "translateX(20px)" : "translateX(0)" }} />
@@ -94,29 +84,27 @@ function Panel() {
         </Row>
       </Card>
 
-      {/* แก้ลิงก์วิดีโอบทเดิม */}
-      <SecTitle>วิดีโอของแต่ละบท</SecTitle>
+      <SecTitle>วิดีโอ + รูปปกของแต่ละบท</SecTitle>
       {curriculum.map((m) => (
         <div key={m.module} style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, letterSpacing: "0.06em", marginBottom: 8 }}>{m.module}</div>
           {m.lessons.map((l) => (
             <Card key={l.id} tight>
               <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
-                <Video size={15} color={BRAND.red} /> {l.title}
-                {l.id.startsWith("custom-") && <span style={tag}>เพิ่มเอง</span>}
+                {l.title}{l.id.startsWith("custom-") && <span style={tag}>เพิ่มเอง</span>}
               </div>
-              <input value={urls[l.id] || ""} onChange={(e) => setUrls({ ...urls, [l.id]: e.target.value })}
-                placeholder="https://…mp4" style={{ ...inp, margin: 0, fontSize: 13.5 }} />
-              {l.id.startsWith("custom-") && (
-                <button onClick={() => removeAdded(l.id)} style={delBtn}><Trash2 size={13} /> ลบบทนี้</button>
-              )}
+              <label style={miniLbl}><Video size={13} color={BRAND.red} /> ลิงก์วิดีโอ (YouTube หรือ .mp4)</label>
+              <input value={urls[l.id] || ""} onChange={(e) => setUrls({ ...urls, [l.id]: e.target.value })} placeholder="https://youtu.be/… หรือ …mp4" style={{ ...inp, margin: "0 0 8px", fontSize: 13.5 }} />
+              <label style={miniLbl}><Image size={13} color={BRAND.red} /> ลิงก์รูปปก (thumbnail)</label>
+              <input value={thumbs[l.id] || ""} onChange={(e) => setThumbs({ ...thumbs, [l.id]: e.target.value })} placeholder="https://…jpg/png (เว้นว่างได้)" style={{ ...inp, margin: 0, fontSize: 13.5 }} />
+              {thumbs[l.id] ? <img src={thumbs[l.id]} alt="" style={{ marginTop: 8, width: 120, aspectRatio: "16/9", objectFit: "cover", borderRadius: 8, border: `1px solid ${BRAND.line}` }} /> : null}
+              {l.id.startsWith("custom-") && <button onClick={() => removeAdded(l.id)} style={delBtn}><Trash2 size={13} /> ลบบทนี้</button>}
             </Card>
           ))}
         </div>
       ))}
-      <button onClick={saveUrls} style={{ ...btn, marginBottom: 24 }}><Save size={15} /> บันทึกลิงก์ (เครื่องนี้)</button>
+      <button onClick={saveEdits} style={{ ...btn, marginBottom: 24 }}><Save size={15} /> บันทึก (เครื่องนี้)</button>
 
-      {/* เพิ่มบทใหม่ */}
       <SecTitle>เพิ่มบทใหม่ (คลิปที่ 9–21)</SecTitle>
       <Card>
         <label style={lbl}>หมวด</label>
@@ -126,10 +114,13 @@ function Panel() {
         <label style={lbl}>ชื่อบท</label>
         <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} style={inp} placeholder="เช่น ตู้น้ำหอม — วิธีเล่าให้ลูกค้าเห็นภาพ" />
 
-        <label style={lbl}>ลิงก์วิดีโอ</label>
-        <input value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} style={inp} placeholder="https://…mp4" />
+        <label style={lbl}>ลิงก์วิดีโอ (YouTube หรือ .mp4)</label>
+        <input value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} style={inp} placeholder="https://youtu.be/…" />
 
-        <label style={lbl}>แบบทดสอบ (ต้องตอบถูกทุกข้อถึงผ่าน)</label>
+        <label style={lbl}>ลิงก์รูปปก (เว้นว่างได้)</label>
+        <input value={form.thumbnail} onChange={(e) => setForm({ ...form, thumbnail: e.target.value })} style={inp} placeholder="https://…jpg" />
+
+        <label style={lbl}>แบบทดสอบของบทนี้ (จะถูกรวมเข้าข้อสอบใหญ่ท้ายสุด)</label>
         {form.quiz.map((q, qi) => (
           <div key={qi} style={{ background: "#FaF8F4", border: `1px solid ${BRAND.line}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
@@ -147,28 +138,24 @@ function Panel() {
           </div>
         ))}
         <button onClick={() => setForm({ ...form, quiz: [...form.quiz, emptyQuiz()] })} style={{ ...btnGhost, marginBottom: 12 }}><Plus size={14} /> เพิ่มคำถาม</button>
-        <button onClick={addLesson} disabled={!formValid} style={{ ...btn, width: "100%", opacity: formValid ? 1 : 0.45, cursor: formValid ? "pointer" : "not-allowed" }}>
-          <Plus size={15} /> เพิ่มบทนี้
-        </button>
+        <button onClick={addLesson} disabled={!formValid} style={{ ...btn, width: "100%", opacity: formValid ? 1 : 0.45, cursor: formValid ? "pointer" : "not-allowed" }}><Plus size={15} /> เพิ่มบทนี้</button>
       </Card>
 
-      {/* Export */}
       <SecTitle>บันทึกให้ทุกคนเห็นถาวร</SecTitle>
       <Card>
         <p style={{ fontSize: 13.5, color: BRAND.sub, margin: "0 0 12px", lineHeight: 1.6 }}>
-          สิ่งที่แก้ด้านบนเห็นเฉพาะเครื่องนี้ก่อน · กด Export จะได้ไฟล์ <b>content.js</b> เอาไปวางทับ <code>src/content.js</code> ใน repo แล้ว <b>git push</b> → เซลทุกคนเห็นเหมือนกัน
+          สิ่งที่แก้ด้านบนเห็นเฉพาะเครื่องนี้ก่อน · กด Export ได้ไฟล์ <b>content.js</b> เอาไปวางทับ <code>src/content.js</code> ใน repo แล้ว <b>git push</b> → เซลทุกคนเห็นเหมือนกัน
         </p>
         <button onClick={exportFile} style={{ ...btn, background: BRAND.ink, width: "100%", marginBottom: 8 }}><Download size={15} /> Export content.js</button>
         <button onClick={() => { clearLocalContent(); location.reload(); }} style={{ ...btnGhost, width: "100%", justifyContent: "center" }}><Copy size={13} /> ล้างข้อมูลชั่วคราวในเครื่อง (ทำหลัง push แล้ว)</button>
       </Card>
 
-      {savedMsg && <div style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)", background: BRAND.green, color: "#fff", padding: "10px 18px", borderRadius: 999, fontSize: 14, fontWeight: 600 }}>{savedMsg}</div>}
+      {msg && <div style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)", background: BRAND.green, color: "#fff", padding: "10px 18px", borderRadius: 999, fontSize: 14, fontWeight: 600 }}>{msg}</div>}
       <a href="#" style={back}><ChevronLeft size={15} /> กลับหน้าเรียน</a>
     </Shell>
   );
 }
 
-/* ---- small pieces ---- */
 function Shell({ children, wide }) {
   return <div style={{ background: BRAND.bg, minHeight: "100vh", color: BRAND.ink }}>
     <div style={{ maxWidth: wide ? 760 : 420, margin: "0 auto", padding: "40px 20px 60px" }}>{children}</div>
@@ -179,6 +166,7 @@ const Row = ({ children }) => <div style={{ display: "flex", justifyContent: "sp
 const SecTitle = ({ children }) => <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.08em", margin: "6px 0 10px" }}>{children}</div>;
 
 const inp = { width: "100%", boxSizing: "border-box", padding: "10px 12px", margin: "0 0 12px", borderRadius: 10, border: `1px solid ${BRAND.line}`, fontSize: 14.5, background: "#fff", color: BRAND.ink };
+const miniLbl = { display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: BRAND.sub, marginBottom: 4 };
 const lbl = { display: "block", fontSize: 13, fontWeight: 600, color: BRAND.sub, marginBottom: 4 };
 const btn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: BRAND.red, color: "#fff", border: "none", borderRadius: 10, padding: "11px 18px", fontSize: 14.5, fontWeight: 600, cursor: "pointer" };
 const btnGhost = { display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: `1px solid ${BRAND.line}`, color: BRAND.ink, borderRadius: 10, padding: "9px 14px", fontSize: 13.5, fontWeight: 500, cursor: "pointer" };
