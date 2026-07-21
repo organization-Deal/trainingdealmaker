@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Lock, CheckCircle2, Play, Swords, LogOut, ChevronLeft, ChevronRight, RotateCcw, Send,
   ShieldAlert, Award, Circle, AlertTriangle, Settings, GraduationCap, PlayCircle,
-  Clock, XCircle, User, Handshake,
+  Clock, XCircle, User, Handshake, Check,
 } from "lucide-react";
 import { SCENARIOS, FORBIDDEN_WORDS, AI_MODEL, BUSINESS_CONTEXT } from "./content.js";
 import {
@@ -99,8 +99,8 @@ export default function App() {
         .card{flex:0 0 300px;scroll-snap-align:start}
         .lc{transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s}
         .lc:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(43,43,43,.12)}
-        .navitem{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:7px 9px;border:none;background:transparent;border-radius:9px;cursor:pointer;font-size:12.5px;color:${BRAND.ink};line-height:1.3}
-        .navitem:hover{background:#EFEBE4}
+        .nav2{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 9px;border:none;background:transparent;border-radius:10px;cursor:pointer;line-height:1.3}
+        .nav2:hover{background:#EFEBE4}
         .arrow{width:34px;height:34px;border-radius:50%;border:1px solid ${BRAND.line};background:${BRAND.card};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:${BRAND.ink}}
         .arrow:hover{background:#F0EEE9}
         .typing{display:inline-flex;gap:4px;align-items:center;padding:11px 15px}
@@ -163,7 +163,7 @@ function Login({ onLogin }) {
 }
 
 /* ---------------- DASHBOARD (sidebar + shelves) ---------------- */
-const Dot = ({ on }) => <span style={{ width: 8, height: 8, borderRadius: "50%", background: on ? BRAND.green : BRAND.line, flexShrink: 0 }} />;
+const badgeIcon = (bg) => ({ width: 24, height: 24, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: bg });
 
 function Sidebar({ user, curriculum, progress, watchedCount, total, allWatched, finalPassed, unlocked, onOpen, onExam, onRoleplay, onLogout }) {
   const pct = Math.round((watchedCount / total) * 100);
@@ -174,33 +174,38 @@ function Sidebar({ user, curriculum, progress, watchedCount, total, allWatched, 
       <div style={{ fontSize: 12, color: BRAND.sub, marginBottom: 16 }}>รหัส {user.empId}</div>
 
       <div style={{ fontSize: 12, color: BRAND.sub, marginBottom: 6 }}>ดูแล้ว {watchedCount}/{total} บท{finalPassed ? " · สอบผ่าน ✓" : ""}</div>
-      <div style={{ height: 7, background: BRAND.line, borderRadius: 999, marginBottom: 20 }}>
+      <div style={{ height: 7, background: BRAND.line, borderRadius: 999, marginBottom: 18 }}>
         <div style={{ width: `${pct}%`, height: "100%", background: allWatched ? BRAND.green : BRAND.red, borderRadius: 999, transition: "width .4s" }} />
       </div>
 
-      {curriculum.map((m) => (
-        <div key={m.module} style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, padding: "0 9px" }}>{m.module}</div>
-          {m.lessons.map((l) => (
-            <button key={l.id} className="navitem f" onClick={() => onOpen(l)}>
-              <Dot on={!!progress[l.id]?.watched} />
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.title}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {curriculum.flatMap((m) => m.lessons).map((l, i) => {
+          const done = !!progress[l.id]?.watched;
+          return (
+            <button key={l.id} className="nav2 f" onClick={() => onOpen(l)}>
+              <span style={{ width: 24, height: 24, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11.5, fontWeight: 700, background: done ? BRAND.green : "#EDE9E2", color: done ? "#fff" : BRAND.sub }}>
+                {done ? <Check size={13} /> : i + 1}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: done ? 600 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: done ? BRAND.ink : BRAND.sub }}>{l.title}</span>
             </button>
-          ))}
-        </div>
-      ))}
+          );
+        })}
+      </div>
 
-      <div style={{ borderTop: `1px solid ${BRAND.line}`, margin: "10px 0", paddingTop: 10 }}>
-        <button className="navitem f" onClick={onExam}>
-          {finalPassed ? <CheckCircle2 size={13} color={BRAND.green} /> : <GraduationCap size={13} color={BRAND.red} />}
-          <span>ข้อสอบใหญ่</span>
+      <div style={{ borderTop: `1px solid ${BRAND.line}`, margin: "14px 0 4px", paddingTop: 12, display: "flex", flexDirection: "column", gap: 2 }}>
+        <button className="nav2 f" onClick={onExam}>
+          <span style={badgeIcon(finalPassed ? BRAND.green : "#EDE9E2")}>{finalPassed ? <Check size={13} color="#fff" /> : <GraduationCap size={13} color={BRAND.red} />}</span>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>ข้อสอบใหญ่</span>
         </button>
-        <button className="navitem f" onClick={() => unlocked && onRoleplay()} style={{ opacity: unlocked ? 1 : 0.5 }}>
-          {unlocked ? <Swords size={13} color={BRAND.green} /> : <Lock size={13} color={BRAND.sub} />}
-          <span>สนามซ้อม AI</span>
+        <button className="nav2 f" onClick={() => unlocked && onRoleplay()} style={{ opacity: unlocked ? 1 : 0.5 }}>
+          <span style={badgeIcon(unlocked ? BRAND.green : "#EDE9E2")}>{unlocked ? <Swords size={13} color="#fff" /> : <Lock size={13} color={BRAND.sub} />}</span>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>สนามซ้อม AI</span>
+        </button>
+        <button className="nav2 f" onClick={onLogout}>
+          <span style={badgeIcon("#EDE9E2")}><LogOut size={13} color={BRAND.sub} /></span>
+          <span style={{ fontSize: 13, color: BRAND.sub }}>ออกจากระบบ</span>
         </button>
       </div>
-      <button className="navitem f" onClick={onLogout} style={{ color: BRAND.sub }}><LogOut size={13} /> ออกจากระบบ</button>
     </aside>
   );
 }
