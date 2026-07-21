@@ -197,8 +197,8 @@ function Sidebar({ user, curriculum, progress, watchedCount, total, allWatched, 
           <span style={badgeIcon(finalPassed ? BRAND.green : "#EDE9E2")}>{finalPassed ? <Check size={13} color="#fff" /> : <GraduationCap size={13} color={BRAND.red} />}</span>
           <span style={{ fontSize: 13, fontWeight: 600 }}>ข้อสอบใหญ่</span>
         </button>
-        <button className="nav2 f" onClick={() => unlocked && onRoleplay()} style={{ opacity: unlocked ? 1 : 0.5 }}>
-          <span style={badgeIcon(unlocked ? BRAND.green : "#EDE9E2")}>{unlocked ? <Swords size={13} color="#fff" /> : <Lock size={13} color={BRAND.sub} />}</span>
+        <button className="nav2 f" onClick={onRoleplay}>
+          <span style={badgeIcon(BRAND.green)}><Swords size={13} color="#fff" /></span>
           <span style={{ fontSize: 13, fontWeight: 600 }}>สนามซ้อม AI</span>
         </button>
         <button className="nav2 f" onClick={onLogout}>
@@ -286,23 +286,13 @@ function Dashboard(props) {
 
         <section style={{ maxWidth: 640 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>ด่านสุดท้าย · สนามซ้อมกับลูกค้าจริง</div>
-          <div style={{ background: unlocked ? BRAND.card : "#EFEBE4", border: `1px solid ${unlocked ? BRAND.green : BRAND.line}`, borderRadius: 20, padding: 24, boxShadow: unlocked ? "0 4px 20px rgba(43,43,43,.05)" : "none" }}>
+          <div style={{ background: BRAND.card, border: `1px solid ${BRAND.green}`, borderRadius: 20, padding: 24, boxShadow: "0 4px 20px rgba(43,43,43,.05)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-              {unlocked ? <Swords size={22} color={BRAND.green} /> : <Lock size={22} color={BRAND.sub} />}
+              <Swords size={22} color={BRAND.green} />
               <div style={{ fontWeight: 700, fontSize: 17 }}>สนามซ้อม AI — รับมือลูกค้าก่อนของจริง</div>
             </div>
-            {previewUnlock && !finalPassed && (
-              <div style={{ display: "inline-block", fontSize: 12, fontWeight: 600, color: BRAND.amber, background: "#FBF3E3", border: `1px solid ${BRAND.amber}`, borderRadius: 8, padding: "3px 8px", marginBottom: 10 }}>
-                โหมดทดสอบ (ปลดล็อกชั่วคราวสำหรับผู้ดูแล)
-              </div>
-            )}
-            <p style={{ fontSize: 14, color: BRAND.sub, margin: "0 0 16px" }}>
-              {unlocked ? "ซ้อมคุยกับลูกค้าจำลอง ระบบจับคำต้องห้ามสดๆ และประเมินผลตอนจบ" : "ต้องสอบใหญ่ผ่าน 100% ก่อนถึงจะปลดล็อก"}
-            </p>
-            <button className="f" onClick={() => unlocked && onRoleplay()} disabled={!unlocked}
-              style={{ ...btnP, background: unlocked ? BRAND.green : "#B9B3AA", cursor: unlocked ? "pointer" : "not-allowed" }}>
-              {unlocked ? "เข้าสนามซ้อม" : "ยังล็อกอยู่"}
-            </button>
+            <p style={{ fontSize: 14, color: BRAND.sub, margin: "0 0 16px" }}>ซ้อมคุยกับลูกค้าจำลอง ระบบจับคำต้องห้ามสดๆ และประเมินผลตอนจบ</p>
+            <button className="f" onClick={onRoleplay} style={{ ...btnP, background: BRAND.green }}>เข้าสนามซ้อม</button>
           </div>
         </section>
       </main>
@@ -432,8 +422,6 @@ function Roleplay({ allPassed, onBack }) {
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef(null);
   useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [msgs, loading, decision, grade]);
-  if (!allPassed) return null;
-
   const saleTurns = msgs.filter((m) => m.role === "sale").length;
   const decided = !!decision;
 
