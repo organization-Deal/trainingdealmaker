@@ -57,7 +57,7 @@ function YouTubePlayer({ videoId, onTime, onMeta, onEnd }) {
 
 export default function App() {
   const [user, setUser] = useState(loadUser());
-  const [progress, setProgress] = useState(() => { const u = loadUser(); return u ? loadProgress(u.empId) : {}; });
+  const [progress, setProgress] = useState(() => { const u = loadUser(); return u ? loadProgress(u.name) : {}; });
   const [screen, setScreen] = useState(loadUser() ? "dashboard" : "login");
   const [activeLesson, setActiveLesson] = useState(null);
 
@@ -72,15 +72,15 @@ export default function App() {
 
   const update = (lessonId, patch) => {
     const next = { ...progress, [lessonId]: { ...(progress[lessonId] || {}), ...patch } };
-    setProgress(next); if (user) saveProgress(user.empId, next);
+    setProgress(next); if (user) saveProgress(user.name, next);
   };
   const setFinal = (passed) => {
     const next = { ...progress, __final: { passed } };
-    setProgress(next); if (user) saveProgress(user.empId, next);
+    setProgress(next); if (user) saveProgress(user.name, next);
   };
-  const login = (name, empId) => {
-    const u = { name: name.trim(), empId: empId.trim() };
-    setUser(u); saveUser(u); setProgress(loadProgress(u.empId)); setScreen("dashboard");
+  const login = (name) => {
+    const u = { name: name.trim() };
+    setUser(u); saveUser(u); setProgress(loadProgress(u.name)); setScreen("dashboard");
   };
   const logout = () => { clearUser(); setUser(null); setProgress({}); setScreen("login"); };
 
@@ -140,8 +140,8 @@ export default function App() {
 
 /* ---------------- LOGIN ---------------- */
 function Login({ onLogin }) {
-  const [name, setName] = useState(""); const [emp, setEmp] = useState("");
-  const ready = name.trim() && emp.trim();
+  const [name, setName] = useState("");
+  const ready = name.trim();
   return (
     <div style={{ maxWidth: 440, margin: "0 auto", padding: "72px 24px" }}>
       <div style={{ fontWeight: 800, letterSpacing: "0.18em", fontSize: 13, color: BRAND.red }}>DEAL! SALES ACADEMY</div>
@@ -149,10 +149,8 @@ function Login({ onLogin }) {
       <p style={{ color: BRAND.sub, fontSize: 15, marginBottom: 28 }}>ดูคลิปให้ครบทุกบท → สอบใหญ่ผ่าน 95% → ปลดล็อกซ้อมกับลูกค้าจำลอง แล้วถึงพร้อมปิดการขายจริง</p>
       <div style={{ background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 16, padding: 22 }}>
         <label style={lbl}>ชื่อ–สกุล</label>
-        <input className="f" style={inp} value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น มิว สมใจ" />
-        <label style={lbl}>รหัสพนักงาน</label>
-        <input className="f" style={inp} value={emp} onChange={(e) => setEmp(e.target.value)} placeholder="เช่น DEAL-041" />
-        <button className="f" onClick={() => ready && onLogin(name, emp)} disabled={!ready}
+        <input className="f" style={inp} value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && ready && onLogin(name)} placeholder="เช่น มิว สมใจ" />
+        <button className="f" onClick={() => ready && onLogin(name)} disabled={!ready}
           style={{ ...btnP, width: "100%", marginTop: 8, opacity: ready ? 1 : 0.45, cursor: ready ? "pointer" : "not-allowed" }}>เข้าสู่การอบรม</button>
       </div>
       <a href="#admin" style={{ display: "inline-flex", alignItems: "center", gap: 5, color: BRAND.sub, fontSize: 12.5, textDecoration: "none", marginTop: 14 }}>
@@ -170,8 +168,7 @@ function Sidebar({ user, lessons, progress, watchedCount, total, allWatched, fin
   return (
     <aside className="side">
       <div style={{ fontWeight: 800, letterSpacing: "0.14em", fontSize: 11, color: BRAND.red }}>DEAL! SALES ACADEMY</div>
-      <div style={{ fontSize: 16, fontWeight: 700, marginTop: 6 }}>{user.name}</div>
-      <div style={{ fontSize: 12, color: BRAND.sub, marginBottom: 16 }}>รหัส {user.empId}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, margin: "6px 0 16px" }}>{user.name}</div>
 
       <div style={{ fontSize: 12, color: BRAND.sub, marginBottom: 6 }}>ดูแล้ว {watchedCount}/{total} บท{finalPassed ? " · สอบผ่าน ✓" : ""}</div>
       <div style={{ height: 7, background: BRAND.line, borderRadius: 999, marginBottom: 18 }}>
