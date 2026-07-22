@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ShieldCheck, Download, Save, ChevronLeft, Video, Image, Unlock, Plus, Trash2, Copy } from "lucide-react";
+import { ShieldCheck, Download, Save, ChevronLeft, Video, Image, Unlock, Plus, Trash2, Copy, Upload } from "lucide-react";
 import { CURRICULUM, ADMIN_PIN } from "./content.js";
 import {
   BRAND, loadVideoOverrides, saveVideoOverrides, loadThumbOverrides, saveThumbOverrides,
@@ -8,6 +8,25 @@ import {
 } from "./lib.js";
 
 const emptyQuiz = () => ({ q: "", choices: ["", "", "", ""], correct: 0 });
+
+function compressImage(file, maxW = 480) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        c.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL("image/jpeg", 0.72));
+      };
+      img.onerror = reject; img.src = e.target.result;
+    };
+    reader.onerror = reject; reader.readAsDataURL(file);
+  });
+}
 
 export default function Admin() {
   const [pin, setPin] = useState(""); const [ok, setOk] = useState(false);
@@ -40,7 +59,7 @@ function Panel() {
   const [added, setAdded] = useState(loadAddedLessons());
   const [preview, setPreview] = useState(loadPreviewUnlock());
   const [msg, setMsg] = useState("");
-  const [form, setForm] = useState({ module: CURRICULUM[0].module, title: "", videoUrl: "", thumbnail: "", quiz: [emptyQuiz()] });
+  const [form, setForm] = useState({ module: CURRICULUM[0].module, title: "", videoUrl: "", thumbnail: "", quiz: [] });
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(""), 2000); };
   const saveEdits = () => { saveVideoOverrides(urls); saveThumbOverrides(thumbs); flash("บันทึกแล้ว (เครื่องนี้)"); };
@@ -50,10 +69,11 @@ function Panel() {
 
   const addLesson = () => {
     const id = "custom-" + Date.now();
-    const lesson = { module: form.module.trim() || "บทเพิ่มเติม", id, title: form.title.trim(), videoUrl: form.videoUrl.trim(), thumbnail: form.thumbnail.trim(), quiz: form.quiz };
+    const cleanQuiz = form.quiz.filter((q) => q.q.trim() && q.choices.every((c) => c.trim()));
+    const lesson = { module: form.module.trim() || "บทเพิ่มเติม", id, title: form.title.trim(), videoUrl: form.videoUrl.trim(), thumbnail: form.thumbnail.trim(), quiz: cleanQuiz };
     const next = [...added, lesson]; setAdded(next); saveAddedLessons(next);
     setUrls({ ...urls, [id]: lesson.videoUrl }); setThumbs({ ...thumbs, [id]: lesson.thumbnail });
-    setForm({ module: CURRICULUM[0].module, title: "", videoUrl: "", thumbnail: "", quiz: [emptyQuiz()] });
+    setForm({ module: CURRICULUM[0].module, title: "", videoUrl: "", thumbnail: "", quiz: [] });
     flash("เพิ่มบทแล้ว");
   };
   const removeAdded = (id) => { const next = added.filter((l) => l.id !== id); setAdded(next); saveAddedLessons(next); };
@@ -96,8 +116,11 @@ function Panel() {
               <label style={miniLbl}><Video size={13} color={BRAND.red} /> ลิงก์วิดีโอ (YouTube หรือ .mp4)</label>
               <input value={urls[l.id] || ""} onChange={(e) => setUrls({ ...urls, [l.id]: e.target.value })} placeholder="https://youtu.be/… หรือ …mp4" style={{ ...inp, margin: "0 0 8px", fontSize: 13.5 }} />
               <label style={miniLbl}><Image size={13} color={BRAND.red} /> ลิงก์รูปปก (thumbnail)</label>
-              <input value={thumbs[l.id] || ""} onChange={(e) => setThumbs({ ...thumbs, [l.id]: e.target.value })} placeholder="https://…jpg/png (เว้นว่างได้)" style={{ ...inp, margin: 0, fontSize: 13.5 }} />
-              {thumbs[l.id] ? <img src={thumbs[l.id]} alt="" style={{ marginTop: 8, width: 120, aspectRatio: "16/9", objectFit: "cover", borderRadius: 8, border: `1px solid ${BRAND.line}` }} /> : null}
+              <input value={(thumbs[l.id] || "").startsWith("data:") ? "" : (thumbs[l.id] || "")} onChange={(e) => setThumbs({ ...thumbs, [l.id]: e.target.value })} placeholder="วางลิงก์รูป หรืออัพโหลดด้านล่าง" style={{ ...inp, margin: "0 0 6px", fontSize: 13.5 }} />
+              <label style={{ ...btnGhost, marginBottom: 0 }}><Upload size={12} /> อัพโหลดรูปจากเครื่อง
+                <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const d = await compressImage(f); setThumbs((prev) => ({ ...prev, [l.id]: d })); } }} />
+              </label>
+              {thumbs[l.id] ? <img src={thumbs[l.id]} alt="" style={{ display: "block", marginTop: 8, width: 120, aspectRatio: "16/9", objectFit: "cover", borderRadius: 8, border: `1px solid ${BRAND.line}` }} /> : null}
               {l.id.startsWith("custom-") && <button onClick={() => removeAdded(l.id)} style={delBtn}><Trash2 size={13} /> ลบบทนี้</button>}
             </Card>
           ))}
@@ -117,15 +140,20 @@ function Panel() {
         <label style={lbl}>ลิงก์วิดีโอ (YouTube หรือ .mp4)</label>
         <input value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} style={inp} placeholder="https://youtu.be/…" />
 
-        <label style={lbl}>ลิงก์รูปปก (เว้นว่างได้)</label>
-        <input value={form.thumbnail} onChange={(e) => setForm({ ...form, thumbnail: e.target.value })} style={inp} placeholder="https://…jpg" />
+        <label style={lbl}>รูปปก (เว้นว่างได้)</label>
+        <input value={form.thumbnail.startsWith("data:") ? "" : form.thumbnail} onChange={(e) => setForm({ ...form, thumbnail: e.target.value })} style={{ ...inp, margin: "0 0 6px" }} placeholder="วางลิงก์รูป หรืออัพโหลดด้านล่าง" />
+        <label style={btnGhost}><Upload size={14} /> อัพโหลดรูปจากเครื่อง
+          <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const d = await compressImage(f); setForm((prev) => ({ ...prev, thumbnail: d })); } }} />
+        </label>
+        {form.thumbnail && <img src={form.thumbnail} alt="" style={{ display: "block", margin: "10px 0 4px", width: 150, aspectRatio: "16/9", objectFit: "cover", borderRadius: 8, border: `1px solid ${BRAND.line}` }} />}
 
-        <label style={lbl}>แบบทดสอบของบทนี้ (จะถูกรวมเข้าข้อสอบใหญ่ท้ายสุด)</label>
+        <label style={lbl}>แบบทดสอบของบทนี้ (ไม่บังคับ — เว้นว่างได้ถ้าเป็นบทดูอย่างเดียว)</label>
+        {form.quiz.length === 0 && <div style={{ fontSize: 12.5, color: BRAND.sub, background: "#FaF8F4", border: `1px solid ${BRAND.line}`, borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>บทนี้ยังไม่มีข้อสอบ (เป็นคลิปดูอย่างเดียว) — กด "เพิ่มคำถาม" ถ้าต้องการเพิ่มเข้าข้อสอบใหญ่</div>}
         {form.quiz.map((q, qi) => (
           <div key={qi} style={{ background: "#FaF8F4", border: `1px solid ${BRAND.line}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: BRAND.sub }}>คำถามที่ {qi + 1}</span>
-              {form.quiz.length > 1 && <button onClick={() => setForm({ ...form, quiz: form.quiz.filter((_, i) => i !== qi) })} style={delBtn}><Trash2 size={12} /></button>}
+              <button onClick={() => setForm({ ...form, quiz: form.quiz.filter((_, i) => i !== qi) })} style={delBtn}><Trash2 size={12} /></button>
             </div>
             <input value={q.q} onChange={(e) => { const nq = [...form.quiz]; nq[qi] = { ...q, q: e.target.value }; setForm({ ...form, quiz: nq }); }} style={{ ...inp, margin: "0 0 8px" }} placeholder="พิมพ์คำถาม" />
             {q.choices.map((c, ci) => (
