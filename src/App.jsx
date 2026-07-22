@@ -248,7 +248,6 @@ function LessonCard({ lesson, idx, moduleName, watched, onOpen }) {
           : <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(0,0,0,.55)", color: "#fff", borderRadius: 8, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>บทที่ {idx}</div>}
       </div>
       <div style={{ padding: "14px 16px 16px" }}>
-        {moduleName && <div style={{ fontSize: 11, fontWeight: 600, color: BRAND.sub, marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{moduleName}</div>}
         <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.4, marginBottom: 8, minHeight: 42 }}>{lesson.title}</div>
         <div style={{ fontSize: 12.5, color: watched ? BRAND.green : BRAND.sub, display: "flex", alignItems: "center", gap: 5 }}>
           {watched ? "เรียนจบแล้ว" : <><Play size={12} /> ยังไม่ได้ดู</>}
