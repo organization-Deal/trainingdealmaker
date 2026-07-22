@@ -32,6 +32,10 @@ export function saveTitleOverrides(map) { try { localStorage.setItem("deal_title
 export function loadHiddenLessons() { try { return JSON.parse(localStorage.getItem("deal_hidden_lessons")) || []; } catch { return []; } }
 export function saveHiddenLessons(arr) { try { localStorage.setItem("deal_hidden_lessons", JSON.stringify(arr)); } catch {} }
 
+/* ---- แก้ข้อสอบต่อคลิป ---- */
+export function loadQuizOverrides() { try { return JSON.parse(localStorage.getItem("deal_quiz_overrides")) || {}; } catch { return {}; } }
+export function saveQuizOverrides(map) { try { localStorage.setItem("deal_quiz_overrides", JSON.stringify(map)); } catch {} }
+
 /* ---- ลำดับคลิป (จัดเรียงเอง) ---- */
 export function loadOrder() { try { return JSON.parse(localStorage.getItem("deal_order")) || []; } catch { return []; } }
 export function saveOrder(arr) { try { localStorage.setItem("deal_order", JSON.stringify(arr)); } catch {} }
@@ -47,6 +51,7 @@ export function clearLocalContent() {
     localStorage.removeItem("deal_thumb_overrides");
     localStorage.removeItem("deal_title_overrides");
     localStorage.removeItem("deal_hidden_lessons");
+    localStorage.removeItem("deal_quiz_overrides");
     localStorage.removeItem("deal_order");
     localStorage.removeItem("deal_added_lessons");
   } catch {}
@@ -57,6 +62,7 @@ export function getCurriculum() {
   const ov = loadVideoOverrides();
   const tov = loadThumbOverrides();
   const titleOv = loadTitleOverrides();
+  const quizOv = loadQuizOverrides();
   const hidden = loadHiddenLessons();
   const added = loadAddedLessons();
   const mods = CURRICULUM.map((m) => ({ module: m.module, lessons: m.lessons.map((l) => ({ ...l })) }));
@@ -76,7 +82,7 @@ export function getCurriculum() {
         title: titleOv[l.id] || l.title,
         videoUrl: ov[l.id] || l.videoUrl,
         thumbnail: tov[l.id] !== undefined ? tov[l.id] : (l.thumbnail || ""),
-        quiz: l.quiz || [],
+        quiz: quizOv[l.id] !== undefined ? quizOv[l.id] : (l.quiz || []),
       }));
   });
   return mods.filter((m) => m.lessons.length > 0);
