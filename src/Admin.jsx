@@ -5,11 +5,39 @@ import {
   BRAND, loadVideoOverrides, saveVideoOverrides, loadThumbOverrides, saveThumbOverrides,
   loadAddedLessons, saveAddedLessons, loadPreviewUnlock, savePreviewUnlock,
   loadTitleOverrides, saveTitleOverrides, loadHiddenLessons, saveHiddenLessons,
-  loadOrder, saveOrder, flatLessons,
+  loadOrder, saveOrder, flatLessons, loadQuizOverrides, saveQuizOverrides,
   getCurriculum, buildContentFile, clearLocalContent,
 } from "./lib.js";
 
 const emptyQuiz = () => ({ q: "", choices: ["", "", "", ""], correct: 0 });
+
+function QuizEditor({ quiz, onChange }) {
+  const setQ = (qi, patch) => onChange(quiz.map((q, i) => (i === qi ? { ...q, ...patch } : q)));
+  const setChoice = (qi, ci, val) => onChange(quiz.map((q, i) => (i === qi ? { ...q, choices: q.choices.map((c, j) => (j === ci ? val : c)) } : q)));
+  const addQ = () => onChange([...quiz, { q: "", choices: ["", "", "", ""], correct: 0 }]);
+  const delQ = (qi) => onChange(quiz.filter((_, i) => i !== qi));
+  return (
+    <div style={{ marginTop: 10 }}>
+      {quiz.length === 0 && <div style={{ fontSize: 12.5, color: BRAND.sub, marginBottom: 8 }}>ยังไม่มีข้อสอบในคลิปนี้ — กด "เพิ่มคำถาม" เพื่อสร้าง</div>}
+      {quiz.map((q, qi) => (
+        <div key={qi} style={{ background: "#FaF8F4", border: `1px solid ${BRAND.line}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.sub }}>ข้อ {qi + 1}</span>
+            <button onClick={() => delQ(qi)} style={delBtn}><Trash2 size={12} /> ลบข้อ</button>
+          </div>
+          <input value={q.q} onChange={(e) => setQ(qi, { q: e.target.value })} placeholder="พิมพ์คำถาม" style={{ ...inp, margin: "0 0 8px", fontSize: 13.5 }} />
+          {q.choices.map((c, ci) => (
+            <div key={ci} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+              <input type="radio" checked={q.correct === ci} onChange={() => setQ(qi, { correct: ci })} title="ตั้งเป็นเฉลย" />
+              <input value={c} onChange={(e) => setChoice(qi, ci, e.target.value)} placeholder={`ตัวเลือก ${ci + 1}${q.correct === ci ? " (เฉลย)" : ""}`} style={{ ...inp, margin: 0, fontSize: 13.5, borderColor: q.correct === ci ? BRAND.green : BRAND.line }} />
+            </div>
+          ))}
+        </div>
+      ))}
+      <button onClick={addQ} style={btnGhost}><Plus size={14} /> เพิ่มคำถาม</button>
+    </div>
+  );
+}
 
 function compressImage(file, maxW = 480) {
   return new Promise((resolve, reject) => {
@@ -62,12 +90,14 @@ function Panel() {
   const [added, setAdded] = useState(loadAddedLessons());
   const [hidden, setHidden] = useState(loadHiddenLessons());
   const [, bump] = useState(0);
+  const [quizzes, setQuizzes] = useState(() => { const q = {}; getCurriculum().forEach((m) => m.lessons.forEach((l) => { q[l.id] = l.quiz || []; })); return q; });
+  const [openQuiz, setOpenQuiz] = useState({});
   const [preview, setPreview] = useState(loadPreviewUnlock());
   const [msg, setMsg] = useState("");
   const [form, setForm] = useState({ module: CURRICULUM[0].module, title: "", videoUrl: "", thumbnail: "", quiz: [] });
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(""), 2000); };
-  const saveEdits = () => { saveVideoOverrides(urls); saveThumbOverrides(thumbs); saveTitleOverrides(titles); flash("บันทึกแล้ว (เครื่องนี้)"); };
+  const saveEdits = () => { saveVideoOverrides(urls); saveThumbOverrides(thumbs); saveTitleOverrides(titles); saveQuizOverrides(quizzes); flash("บันทึกแล้ว (เครื่องนี้)"); };
   const togglePreview = () => { const v = !preview; setPreview(v); savePreviewUnlock(v); };
 
   const formValid = form.title.trim() && form.videoUrl.trim() && form.quiz.every((q) => q.q.trim() && q.choices.every((c) => c.trim()));
@@ -93,7 +123,7 @@ function Panel() {
   };
 
   const exportFile = () => {
-    saveVideoOverrides(urls); saveThumbOverrides(thumbs); saveTitleOverrides(titles);
+    saveVideoOverrides(urls); saveThumbOverrides(thumbs); saveTitleOverrides(titles); saveQuizOverrides(quizzes);
     const blob = new Blob([buildContentFile()], { type: "text/javascript" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "content.js"; a.click();
   };
@@ -146,6 +176,12 @@ function Panel() {
             <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const d = await compressImage(f); setThumbs((prev) => ({ ...prev, [l.id]: d })); } }} />
           </label>
           {thumbs[l.id] ? <img src={thumbs[l.id]} alt="" style={{ display: "block", marginTop: 8, width: 120, aspectRatio: "16/9", objectFit: "cover", borderRadius: 8, border: `1px solid ${BRAND.line}` }} /> : null}
+          <div style={{ marginTop: 12, borderTop: `1px solid ${BRAND.line}`, paddingTop: 12 }}>
+            <button onClick={() => setOpenQuiz((o) => ({ ...o, [l.id]: !o[l.id] }))} style={{ ...btnGhost, marginBottom: openQuiz[l.id] ? 6 : 0 }}>
+              ข้อสอบของคลิปนี้ ({(quizzes[l.id] || []).length} ข้อ) {openQuiz[l.id] ? "\u25B2" : "\u25BC"}
+            </button>
+            {openQuiz[l.id] && <QuizEditor quiz={quizzes[l.id] || []} onChange={(nq) => setQuizzes((q) => ({ ...q, [l.id]: nq }))} />}
+          </div>
         </Card>
       ))}
       <button onClick={saveEdits} style={{ ...btn, marginBottom: 24 }}><Save size={15} /> บันทึก (เครื่องนี้)</button>
