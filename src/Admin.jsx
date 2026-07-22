@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { ShieldCheck, Download, Save, ChevronLeft, Video, Image, Unlock, Plus, Trash2, Copy, Upload } from "lucide-react";
+import { ShieldCheck, Download, Save, ChevronLeft, Video, Image, Unlock, Plus, Trash2, Copy, Upload, ChevronUp, ChevronDown } from "lucide-react";
 import { CURRICULUM, ADMIN_PIN } from "./content.js";
 import {
   BRAND, loadVideoOverrides, saveVideoOverrides, loadThumbOverrides, saveThumbOverrides,
   loadAddedLessons, saveAddedLessons, loadPreviewUnlock, savePreviewUnlock,
   loadTitleOverrides, saveTitleOverrides, loadHiddenLessons, saveHiddenLessons,
+  loadOrder, saveOrder, flatLessons,
   getCurriculum, buildContentFile, clearLocalContent,
 } from "./lib.js";
 
@@ -60,6 +61,7 @@ function Panel() {
   const [titles, setTitles] = useState(titles0);
   const [added, setAdded] = useState(loadAddedLessons());
   const [hidden, setHidden] = useState(loadHiddenLessons());
+  const [, bump] = useState(0);
   const [preview, setPreview] = useState(loadPreviewUnlock());
   const [msg, setMsg] = useState("");
   const [form, setForm] = useState({ module: CURRICULUM[0].module, title: "", videoUrl: "", thumbnail: "", quiz: [] });
@@ -92,9 +94,14 @@ function Panel() {
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "content.js"; a.click();
   };
 
-  const curriculum = getCurriculum();
-  const flat = curriculum.flatMap((m) => m.lessons);
-  const gi = (l) => flat.findIndex((x) => x.id === l.id) + 1;
+  const flat = flatLessons();
+  const move = (i, dir) => {
+    const ids = flat.map((x) => x.id);
+    const j = i + dir;
+    if (j < 0 || j >= ids.length) return;
+    const t = ids[i]; ids[i] = ids[j]; ids[j] = t;
+    saveOrder(ids); bump((n) => n + 1);
+  };
 
   return (
     <Shell wide>
@@ -114,29 +121,28 @@ function Panel() {
         </Row>
       </Card>
 
-      <SecTitle>วิดีโอ + รูปปกของแต่ละบท</SecTitle>
-      {curriculum.map((m) => (
-        <div key={m.module} style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, letterSpacing: "0.06em", marginBottom: 8 }}>{m.module}</div>
-          {m.lessons.map((l) => (
-            <Card key={l.id} tight>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, color: BRAND.sub }}>บทที่ {gi(l)}{l.id.startsWith("custom-") && <span style={tag}>เพิ่มเอง</span>}</span>
-                <button onClick={() => removeLesson(l)} style={delBtn}><Trash2 size={13} /> ลบบท</button>
-              </div>
-              <label style={miniLbl}>ชื่อบท</label>
-              <input value={titles[l.id] || ""} onChange={(e) => setTitles({ ...titles, [l.id]: e.target.value })} placeholder="ชื่อบท" style={{ ...inp, margin: "0 0 8px", fontSize: 13.5, fontWeight: 600 }} />
-              <label style={miniLbl}><Video size={13} color={BRAND.red} /> ลิงก์วิดีโอ (YouTube หรือ .mp4)</label>
-              <input value={urls[l.id] || ""} onChange={(e) => setUrls({ ...urls, [l.id]: e.target.value })} placeholder="https://youtu.be/… หรือ …mp4" style={{ ...inp, margin: "0 0 8px", fontSize: 13.5 }} />
-              <label style={miniLbl}><Image size={13} color={BRAND.red} /> ลิงก์รูปปก (thumbnail)</label>
-              <input value={(thumbs[l.id] || "").startsWith("data:") ? "" : (thumbs[l.id] || "")} onChange={(e) => setThumbs({ ...thumbs, [l.id]: e.target.value })} placeholder="วางลิงก์รูป หรืออัพโหลดด้านล่าง" style={{ ...inp, margin: "0 0 6px", fontSize: 13.5 }} />
-              <label style={{ ...btnGhost, marginBottom: 0 }}><Upload size={12} /> อัพโหลดรูปจากเครื่อง
-                <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const d = await compressImage(f); setThumbs((prev) => ({ ...prev, [l.id]: d })); } }} />
-              </label>
-              {thumbs[l.id] ? <img src={thumbs[l.id]} alt="" style={{ display: "block", marginTop: 8, width: 120, aspectRatio: "16/9", objectFit: "cover", borderRadius: 8, border: `1px solid ${BRAND.line}` }} /> : null}
-            </Card>
-          ))}
-        </div>
+      <SecTitle>คลิปทั้งหมด · แก้ชื่อ / จัดลำดับ / ลบ</SecTitle>
+      {flat.map((l, i) => (
+        <Card key={l.id} tight>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: BRAND.red }}>คลิปที่ {i + 1}{l.id.startsWith("custom-") && <span style={tag}>เพิ่มเอง</span>}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <button onClick={() => move(i, -1)} disabled={i === 0} style={{ ...iconBtn, opacity: i === 0 ? 0.35 : 1 }} title="เลื่อนขึ้น"><ChevronUp size={16} /></button>
+              <button onClick={() => move(i, 1)} disabled={i === flat.length - 1} style={{ ...iconBtn, opacity: i === flat.length - 1 ? 0.35 : 1 }} title="เลื่อนลง"><ChevronDown size={16} /></button>
+              <button onClick={() => removeLesson(l)} style={delBtn}><Trash2 size={13} /> ลบ</button>
+            </div>
+          </div>
+          <label style={miniLbl}>ชื่อคลิป</label>
+          <input value={titles[l.id] || ""} onChange={(e) => setTitles({ ...titles, [l.id]: e.target.value })} placeholder="ชื่อคลิป" style={{ ...inp, margin: "0 0 8px", fontSize: 13.5, fontWeight: 600 }} />
+          <label style={miniLbl}><Video size={13} color={BRAND.red} /> ลิงก์วิดีโอ (YouTube หรือ .mp4)</label>
+          <input value={urls[l.id] || ""} onChange={(e) => setUrls({ ...urls, [l.id]: e.target.value })} placeholder="https://youtu.be/… หรือ …mp4" style={{ ...inp, margin: "0 0 8px", fontSize: 13.5 }} />
+          <label style={miniLbl}><Image size={13} color={BRAND.red} /> ลิงก์รูปปก (thumbnail)</label>
+          <input value={(thumbs[l.id] || "").startsWith("data:") ? "" : (thumbs[l.id] || "")} onChange={(e) => setThumbs({ ...thumbs, [l.id]: e.target.value })} placeholder="วางลิงก์รูป หรืออัพโหลดด้านล่าง" style={{ ...inp, margin: "0 0 6px", fontSize: 13.5 }} />
+          <label style={{ ...btnGhost, marginBottom: 0 }}><Upload size={12} /> อัพโหลดรูปจากเครื่อง
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const d = await compressImage(f); setThumbs((prev) => ({ ...prev, [l.id]: d })); } }} />
+          </label>
+          {thumbs[l.id] ? <img src={thumbs[l.id]} alt="" style={{ display: "block", marginTop: 8, width: 120, aspectRatio: "16/9", objectFit: "cover", borderRadius: 8, border: `1px solid ${BRAND.line}` }} /> : null}
+        </Card>
       ))}
       <button onClick={saveEdits} style={{ ...btn, marginBottom: 24 }}><Save size={15} /> บันทึก (เครื่องนี้)</button>
 
@@ -210,6 +216,7 @@ const miniLbl = { display: "flex", alignItems: "center", gap: 5, fontSize: 12, f
 const lbl = { display: "block", fontSize: 13, fontWeight: 600, color: BRAND.sub, marginBottom: 4 };
 const btn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: BRAND.red, color: "#fff", border: "none", borderRadius: 10, padding: "11px 18px", fontSize: 14.5, fontWeight: 600, cursor: "pointer" };
 const btnGhost = { display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: `1px solid ${BRAND.line}`, color: BRAND.ink, borderRadius: 10, padding: "9px 14px", fontSize: 13.5, fontWeight: 500, cursor: "pointer" };
+const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 8, border: `1px solid ${BRAND.line}`, background: "#fff", color: BRAND.ink, cursor: "pointer" };
 const delBtn = { display: "inline-flex", alignItems: "center", gap: 4, background: "transparent", border: "none", color: BRAND.red, fontSize: 12.5, cursor: "pointer", marginTop: 6, padding: 0 };
 const back = { display: "inline-flex", alignItems: "center", gap: 5, color: BRAND.sub, fontSize: 13.5, textDecoration: "none", marginTop: 20 };
 const tag = { fontSize: 11, fontWeight: 600, color: BRAND.amber, background: "#FBF3E3", borderRadius: 6, padding: "1px 6px", marginLeft: 4 };
