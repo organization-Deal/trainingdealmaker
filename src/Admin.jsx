@@ -75,7 +75,9 @@ function Panel() {
   const addLesson = () => {
     const id = "custom-" + Date.now();
     const cleanQuiz = form.quiz.filter((q) => q.q.trim() && q.choices.every((c) => c.trim()));
-    const lesson = { module: form.module.trim() || "บทเพิ่มเติม", id, title: form.title.trim(), videoUrl: form.videoUrl.trim(), thumbnail: form.thumbnail.trim(), quiz: cleanQuiz };
+    const cur = flatLessons();
+    const mod = cur[cur.length - 1]?.__module || "บทเรียน";
+    const lesson = { module: mod, id, title: form.title.trim(), videoUrl: form.videoUrl.trim(), thumbnail: form.thumbnail.trim(), quiz: cleanQuiz };
     const next = [...added, lesson]; setAdded(next); saveAddedLessons(next);
     setUrls({ ...urls, [id]: lesson.videoUrl }); setThumbs({ ...thumbs, [id]: lesson.thumbnail });
     setForm({ module: CURRICULUM[0].module, title: "", videoUrl: "", thumbnail: "", quiz: [] });
@@ -148,10 +150,6 @@ function Panel() {
 
       <SecTitle>เพิ่มบทใหม่ (คลิปที่ 9–21)</SecTitle>
       <Card>
-        <label style={lbl}>หมวด</label>
-        <input list="mods" value={form.module} onChange={(e) => setForm({ ...form, module: e.target.value })} style={inp} placeholder="เลือกหมวดเดิม หรือพิมพ์หมวดใหม่" />
-        <datalist id="mods">{CURRICULUM.map((m) => <option key={m.module} value={m.module} />)}</datalist>
-
         <label style={lbl}>ชื่อบท</label>
         <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} style={inp} placeholder="เช่น ตู้น้ำหอม — วิธีเล่าให้ลูกค้าเห็นภาพ" />
 
