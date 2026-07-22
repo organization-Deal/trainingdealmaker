@@ -120,7 +120,7 @@ export default function App() {
 
       {screen === "login" && <Login onLogin={login} />}
       {screen === "dashboard" && user && (
-        <Dashboard user={user} curriculum={curriculum} progress={progress}
+        <Dashboard user={user} lessons={lessons} progress={progress}
           watchedCount={watchedCount} total={total} allWatched={allWatched}
           finalPassed={finalPassed} unlocked={unlocked} previewUnlock={previewUnlock}
           onOpen={(l) => { setActiveLesson(l); setScreen("lesson"); }}
@@ -165,7 +165,7 @@ function Login({ onLogin }) {
 /* ---------------- DASHBOARD (sidebar + shelves) ---------------- */
 const badgeIcon = (bg) => ({ width: 24, height: 24, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: bg });
 
-function Sidebar({ user, curriculum, progress, watchedCount, total, allWatched, finalPassed, unlocked, onOpen, onExam, onRoleplay, onLogout }) {
+function Sidebar({ user, lessons, progress, watchedCount, total, allWatched, finalPassed, unlocked, onOpen, onExam, onRoleplay, onLogout }) {
   const pct = Math.round((watchedCount / total) * 100);
   return (
     <aside className="side">
@@ -179,7 +179,7 @@ function Sidebar({ user, curriculum, progress, watchedCount, total, allWatched, 
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {curriculum.flatMap((m) => m.lessons).map((l, i) => {
+        {lessons.map((l, i) => {
           const done = !!progress[l.id]?.watched;
           return (
             <button key={l.id} className="nav2 f" onClick={() => onOpen(l)}>
@@ -210,10 +210,9 @@ function Sidebar({ user, curriculum, progress, watchedCount, total, allWatched, 
   );
 }
 
-function AllLessonsRow({ curriculum, progress, onOpen }) {
+function AllLessonsRow({ lessons, progress, onOpen }) {
   const ref = useRef(null);
   const scroll = (d) => ref.current?.scrollBy({ left: d * 336, behavior: "smooth" });
-  const lessons = curriculum.flatMap((m) => m.lessons.map((l) => ({ ...l, __module: m.module })));
   return (
     <section style={{ marginBottom: 38 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
@@ -260,7 +259,7 @@ function LessonCard({ lesson, idx, moduleName, watched, onOpen }) {
 }
 
 function Dashboard(props) {
-  const { curriculum, progress, watchedCount, total, allWatched, finalPassed, unlocked, previewUnlock, onOpen, onExam, onRoleplay } = props;
+  const { lessons, progress, watchedCount, total, allWatched, finalPassed, unlocked, previewUnlock, onOpen, onExam, onRoleplay } = props;
   return (
     <div className="wrap">
       <Sidebar {...props} />
@@ -268,7 +267,7 @@ function Dashboard(props) {
         <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px" }}>การอบรมของคุณ</h1>
         <p style={{ color: BRAND.sub, fontSize: 15, margin: "0 0 32px" }}>ดูคลิปให้ครบทุกบท แล้วสอบใหญ่ให้ผ่านเพื่อปลดสนามซ้อม</p>
 
-        <AllLessonsRow curriculum={curriculum} progress={progress} onOpen={onOpen} />
+        <AllLessonsRow lessons={lessons} progress={progress} onOpen={onOpen} />
 
         <section style={{ marginTop: 6, marginBottom: 20, maxWidth: 640 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>ก่อนออกสนาม · ข้อสอบใหญ่</div>
