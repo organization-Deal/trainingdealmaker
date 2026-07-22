@@ -26,6 +26,12 @@ export function saveThumbOverrides(map) { try { localStorage.setItem("deal_thumb
 export function loadAddedLessons() { try { return JSON.parse(localStorage.getItem("deal_added_lessons")) || []; } catch { return []; } }
 export function saveAddedLessons(arr) { try { localStorage.setItem("deal_added_lessons", JSON.stringify(arr)); } catch {} }
 
+/* ---- แก้ชื่อบท + ซ่อน(ลบ)บท ---- */
+export function loadTitleOverrides() { try { return JSON.parse(localStorage.getItem("deal_title_overrides")) || {}; } catch { return {}; } }
+export function saveTitleOverrides(map) { try { localStorage.setItem("deal_title_overrides", JSON.stringify(map)); } catch {} }
+export function loadHiddenLessons() { try { return JSON.parse(localStorage.getItem("deal_hidden_lessons")) || []; } catch { return []; } }
+export function saveHiddenLessons(arr) { try { localStorage.setItem("deal_hidden_lessons", JSON.stringify(arr)); } catch {} }
+
 /* ---- โหมดทดสอบ: ปลดล็อกสนามซ้อม (เฉพาะเครื่องนี้) ---- */
 export function loadPreviewUnlock() { try { return localStorage.getItem("deal_preview_unlock") === "1"; } catch { return false; } }
 export function savePreviewUnlock(on) { try { on ? localStorage.setItem("deal_preview_unlock", "1") : localStorage.removeItem("deal_preview_unlock"); } catch {} }
@@ -35,6 +41,8 @@ export function clearLocalContent() {
   try {
     localStorage.removeItem("deal_video_overrides");
     localStorage.removeItem("deal_thumb_overrides");
+    localStorage.removeItem("deal_title_overrides");
+    localStorage.removeItem("deal_hidden_lessons");
     localStorage.removeItem("deal_added_lessons");
   } catch {}
 }
@@ -43,6 +51,8 @@ export function clearLocalContent() {
 export function getCurriculum() {
   const ov = loadVideoOverrides();
   const tov = loadThumbOverrides();
+  const titleOv = loadTitleOverrides();
+  const hidden = loadHiddenLessons();
   const added = loadAddedLessons();
   const mods = CURRICULUM.map((m) => ({ module: m.module, lessons: m.lessons.map((l) => ({ ...l })) }));
   added.forEach((al) => {
@@ -51,14 +61,17 @@ export function getCurriculum() {
     m.lessons.push({ id: al.id, title: al.title, videoUrl: al.videoUrl, thumbnail: al.thumbnail || "", quiz: al.quiz || [] });
   });
   mods.forEach((m) => {
-    m.lessons = m.lessons.map((l) => ({
-      ...l,
-      videoUrl: ov[l.id] || l.videoUrl,
-      thumbnail: tov[l.id] !== undefined ? tov[l.id] : (l.thumbnail || ""),
-      quiz: l.quiz || [],
-    }));
+    m.lessons = m.lessons
+      .filter((l) => !hidden.includes(l.id))
+      .map((l) => ({
+        ...l,
+        title: titleOv[l.id] || l.title,
+        videoUrl: ov[l.id] || l.videoUrl,
+        thumbnail: tov[l.id] !== undefined ? tov[l.id] : (l.thumbnail || ""),
+        quiz: l.quiz || [],
+      }));
   });
-  return mods;
+  return mods.filter((m) => m.lessons.length > 0);
 }
 export const flatLessons = () => getCurriculum().flatMap((m) => m.lessons);
 
