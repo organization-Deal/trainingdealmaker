@@ -85,9 +85,11 @@ function Panel() {
   };
   const removeAdded = (id) => { const next = added.filter((l) => l.id !== id); setAdded(next); saveAddedLessons(next); };
   const removeLesson = (l) => {
-    if (!window.confirm(`ลบบท "${titles[l.id] || l.title}" ?`)) return;
-    if (l.id.startsWith("custom-")) removeAdded(l.id);
-    else { const h = [...hidden, l.id]; setHidden(h); saveHiddenLessons(h); }
+    if (!window.confirm(`ลบคลิป "${titles[l.id] || l.title}" ?`)) return;
+    const na = added.filter((x) => x.id !== l.id);
+    if (na.length !== added.length) { setAdded(na); saveAddedLessons(na); }
+    if (!hidden.includes(l.id)) { const h = [...hidden, l.id]; setHidden(h); saveHiddenLessons(h); }
+    bump((n) => n + 1);
   };
 
   const exportFile = () => {
