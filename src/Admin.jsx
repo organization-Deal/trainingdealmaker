@@ -4,6 +4,7 @@ import { CURRICULUM, ADMIN_PIN } from "./content.js";
 import {
   BRAND, loadVideoOverrides, saveVideoOverrides, loadThumbOverrides, saveThumbOverrides,
   loadAddedLessons, saveAddedLessons, loadPreviewUnlock, savePreviewUnlock,
+  loadTitleOverrides, saveTitleOverrides, loadHiddenLessons, saveHiddenLessons,
   getCurriculum, buildContentFile, clearLocalContent,
 } from "./lib.js";
 
@@ -48,21 +49,23 @@ export default function Admin() {
 
 function Panel() {
   const init = () => {
-    const ov = loadVideoOverrides(), tov = loadThumbOverrides();
-    const u = {}, t = {};
-    getCurriculum().forEach((m) => m.lessons.forEach((l) => { u[l.id] = ov[l.id] || l.videoUrl; t[l.id] = tov[l.id] !== undefined ? tov[l.id] : (l.thumbnail || ""); }));
-    return { u, t };
+    const ov = loadVideoOverrides(), tov = loadThumbOverrides(), tiv = loadTitleOverrides();
+    const u = {}, t = {}, ti = {};
+    getCurriculum().forEach((m) => m.lessons.forEach((l) => { u[l.id] = ov[l.id] || l.videoUrl; t[l.id] = tov[l.id] !== undefined ? tov[l.id] : (l.thumbnail || ""); ti[l.id] = tiv[l.id] || l.title; }));
+    return { u, t, ti };
   };
-  const [{ u: urls0, t: thumbs0 }] = useState(init);
+  const [{ u: urls0, t: thumbs0, ti: titles0 }] = useState(init);
   const [urls, setUrls] = useState(urls0);
   const [thumbs, setThumbs] = useState(thumbs0);
+  const [titles, setTitles] = useState(titles0);
   const [added, setAdded] = useState(loadAddedLessons());
+  const [hidden, setHidden] = useState(loadHiddenLessons());
   const [preview, setPreview] = useState(loadPreviewUnlock());
   const [msg, setMsg] = useState("");
   const [form, setForm] = useState({ module: CURRICULUM[0].module, title: "", videoUrl: "", thumbnail: "", quiz: [] });
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(""), 2000); };
-  const saveEdits = () => { saveVideoOverrides(urls); saveThumbOverrides(thumbs); flash("บันทึกแล้ว (เครื่องนี้)"); };
+  const saveEdits = () => { saveVideoOverrides(urls); saveThumbOverrides(thumbs); saveTitleOverrides(titles); flash("บันทึกแล้ว (เครื่องนี้)"); };
   const togglePreview = () => { const v = !preview; setPreview(v); savePreviewUnlock(v); };
 
   const formValid = form.title.trim() && form.videoUrl.trim() && form.quiz.every((q) => q.q.trim() && q.choices.every((c) => c.trim()));
@@ -77,14 +80,21 @@ function Panel() {
     flash("เพิ่มบทแล้ว");
   };
   const removeAdded = (id) => { const next = added.filter((l) => l.id !== id); setAdded(next); saveAddedLessons(next); };
+  const removeLesson = (l) => {
+    if (!window.confirm(`ลบบท "${titles[l.id] || l.title}" ?`)) return;
+    if (l.id.startsWith("custom-")) removeAdded(l.id);
+    else { const h = [...hidden, l.id]; setHidden(h); saveHiddenLessons(h); }
+  };
 
   const exportFile = () => {
-    saveVideoOverrides(urls); saveThumbOverrides(thumbs);
+    saveVideoOverrides(urls); saveThumbOverrides(thumbs); saveTitleOverrides(titles);
     const blob = new Blob([buildContentFile()], { type: "text/javascript" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "content.js"; a.click();
   };
 
   const curriculum = getCurriculum();
+  const flat = curriculum.flatMap((m) => m.lessons);
+  const gi = (l) => flat.findIndex((x) => x.id === l.id) + 1;
 
   return (
     <Shell wide>
@@ -110,9 +120,12 @@ function Panel() {
           <div style={{ fontSize: 12, fontWeight: 700, color: BRAND.sub, letterSpacing: "0.06em", marginBottom: 8 }}>{m.module}</div>
           {m.lessons.map((l) => (
             <Card key={l.id} tight>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
-                {l.title}{l.id.startsWith("custom-") && <span style={tag}>เพิ่มเอง</span>}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, color: BRAND.sub }}>บทที่ {gi(l)}{l.id.startsWith("custom-") && <span style={tag}>เพิ่มเอง</span>}</span>
+                <button onClick={() => removeLesson(l)} style={delBtn}><Trash2 size={13} /> ลบบท</button>
               </div>
+              <label style={miniLbl}>ชื่อบท</label>
+              <input value={titles[l.id] || ""} onChange={(e) => setTitles({ ...titles, [l.id]: e.target.value })} placeholder="ชื่อบท" style={{ ...inp, margin: "0 0 8px", fontSize: 13.5, fontWeight: 600 }} />
               <label style={miniLbl}><Video size={13} color={BRAND.red} /> ลิงก์วิดีโอ (YouTube หรือ .mp4)</label>
               <input value={urls[l.id] || ""} onChange={(e) => setUrls({ ...urls, [l.id]: e.target.value })} placeholder="https://youtu.be/… หรือ …mp4" style={{ ...inp, margin: "0 0 8px", fontSize: 13.5 }} />
               <label style={miniLbl}><Image size={13} color={BRAND.red} /> ลิงก์รูปปก (thumbnail)</label>
@@ -121,7 +134,6 @@ function Panel() {
                 <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const d = await compressImage(f); setThumbs((prev) => ({ ...prev, [l.id]: d })); } }} />
               </label>
               {thumbs[l.id] ? <img src={thumbs[l.id]} alt="" style={{ display: "block", marginTop: 8, width: 120, aspectRatio: "16/9", objectFit: "cover", borderRadius: 8, border: `1px solid ${BRAND.line}` }} /> : null}
-              {l.id.startsWith("custom-") && <button onClick={() => removeAdded(l.id)} style={delBtn}><Trash2 size={13} /> ลบบทนี้</button>}
             </Card>
           ))}
         </div>
