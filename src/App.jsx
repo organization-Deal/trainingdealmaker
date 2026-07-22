@@ -241,7 +241,9 @@ function LessonCard({ lesson, idx, moduleName, watched, onOpen }) {
       <div style={{ position: "relative", aspectRatio: "16/9", background: "linear-gradient(135deg,#2B2B2B,#4a3a3a)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {lesson.thumbnail
           ? <img src={lesson.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : <PlayCircle size={44} color="rgba(255,255,255,.85)" />}
+          : ytId(lesson.videoUrl)
+            ? <img src={`https://img.youtube.com/vi/${ytId(lesson.videoUrl)}/hqdefault.jpg`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            : <PlayCircle size={44} color="rgba(255,255,255,.85)" />}
         {watched
           ? <div style={{ position: "absolute", top: 10, right: 10, background: BRAND.green, color: "#fff", borderRadius: 999, padding: "3px 10px", fontSize: 11.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}><CheckCircle2 size={12} /> ดูแล้ว</div>
           : <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(0,0,0,.55)", color: "#fff", borderRadius: 8, padding: "2px 9px", fontSize: 11.5, fontWeight: 700 }}>บทที่ {idx}</div>}
