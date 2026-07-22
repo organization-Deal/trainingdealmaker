@@ -1,4 +1,4 @@
-import { CURRICULUM, ADMIN_PIN, AI_MODEL, FORBIDDEN_WORDS, SCENARIOS } from "./content.js";
+import { CURRICULUM, ADMIN_PIN, AI_MODEL, FORBIDDEN_WORDS, SCENARIOS, BUSINESS_CONTEXT } from "./content.js";
 
 export const BRAND = {
   bg: "#F5F3EF", ink: "#2B2B2B", red: "#8B1E1E", card: "#FFFFFF",
@@ -32,6 +32,10 @@ export function saveTitleOverrides(map) { try { localStorage.setItem("deal_title
 export function loadHiddenLessons() { try { return JSON.parse(localStorage.getItem("deal_hidden_lessons")) || []; } catch { return []; } }
 export function saveHiddenLessons(arr) { try { localStorage.setItem("deal_hidden_lessons", JSON.stringify(arr)); } catch {} }
 
+/* ---- ลำดับคลิป (จัดเรียงเอง) ---- */
+export function loadOrder() { try { return JSON.parse(localStorage.getItem("deal_order")) || []; } catch { return []; } }
+export function saveOrder(arr) { try { localStorage.setItem("deal_order", JSON.stringify(arr)); } catch {} }
+
 /* ---- โหมดทดสอบ: ปลดล็อกสนามซ้อม (เฉพาะเครื่องนี้) ---- */
 export function loadPreviewUnlock() { try { return localStorage.getItem("deal_preview_unlock") === "1"; } catch { return false; } }
 export function savePreviewUnlock(on) { try { on ? localStorage.setItem("deal_preview_unlock", "1") : localStorage.removeItem("deal_preview_unlock"); } catch {} }
@@ -43,6 +47,7 @@ export function clearLocalContent() {
     localStorage.removeItem("deal_thumb_overrides");
     localStorage.removeItem("deal_title_overrides");
     localStorage.removeItem("deal_hidden_lessons");
+    localStorage.removeItem("deal_order");
     localStorage.removeItem("deal_added_lessons");
   } catch {}
 }
@@ -73,7 +78,15 @@ export function getCurriculum() {
   });
   return mods.filter((m) => m.lessons.length > 0);
 }
-export const flatLessons = () => getCurriculum().flatMap((m) => m.lessons);
+export function flatLessons() {
+  const order = loadOrder();
+  let ls = getCurriculum().flatMap((m) => m.lessons.map((l) => ({ ...l, __module: m.module })));
+  if (order.length) {
+    const idx = (id) => { const i = order.indexOf(id); return i === -1 ? 9999 : i; };
+    ls = ls.map((l, i) => ({ l, i })).sort((a, b) => (idx(a.l.id) - idx(b.l.id)) || (a.i - b.i)).map((x) => x.l);
+  }
+  return ls;
+}
 
 /* ---- ข้อสอบใหญ่: รวมทุกคำถามจากทุกบท ---- */
 export function allExamQuestions() {
@@ -82,12 +95,20 @@ export function allExamQuestions() {
 
 /* ---- สร้างไฟล์ content.js เต็ม ให้เอาไป push ---- */
 export function buildContentFile() {
-  const cur = getCurriculum();
+  const flat = flatLessons();
+  const mods = [];
+  flat.forEach((l) => {
+    const { __module, ...rest } = l;
+    const last = mods[mods.length - 1];
+    if (last && last.module === __module) last.lessons.push(rest);
+    else mods.push({ module: __module, lessons: [rest] });
+  });
   return `/* content.js — สร้างจากหน้า /admin  วางทับ src/content.js ทั้งไฟล์ แล้ว git push */
 export const ADMIN_PIN = ${JSON.stringify(ADMIN_PIN)};
 export const AI_MODEL = ${JSON.stringify(AI_MODEL)};
 export const FORBIDDEN_WORDS = ${JSON.stringify(FORBIDDEN_WORDS)};
-export const CURRICULUM = ${JSON.stringify(cur, null, 2)};
+export const BUSINESS_CONTEXT = ${JSON.stringify(BUSINESS_CONTEXT)};
+export const CURRICULUM = ${JSON.stringify(mods, null, 2)};
 export const SCENARIOS = ${JSON.stringify(SCENARIOS, null, 2)};
 `;
 }
