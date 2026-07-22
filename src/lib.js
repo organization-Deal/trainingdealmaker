@@ -60,7 +60,10 @@ export function getCurriculum() {
   const hidden = loadHiddenLessons();
   const added = loadAddedLessons();
   const mods = CURRICULUM.map((m) => ({ module: m.module, lessons: m.lessons.map((l) => ({ ...l })) }));
+  const baseIds = new Set(mods.flatMap((m) => m.lessons.map((l) => l.id)));
   added.forEach((al) => {
+    if (baseIds.has(al.id)) return; // กันซ้ำกับที่อยู่ใน content.js แล้ว
+    baseIds.add(al.id);
     let m = mods.find((x) => x.module === al.module);
     if (!m) { m = { module: al.module, lessons: [] }; mods.push(m); }
     m.lessons.push({ id: al.id, title: al.title, videoUrl: al.videoUrl, thumbnail: al.thumbnail || "", quiz: al.quiz || [] });
