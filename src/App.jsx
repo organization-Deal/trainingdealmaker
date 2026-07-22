@@ -146,7 +146,7 @@ function Login({ onLogin }) {
     <div style={{ maxWidth: 440, margin: "0 auto", padding: "72px 24px" }}>
       <div style={{ fontWeight: 800, letterSpacing: "0.18em", fontSize: 13, color: BRAND.red }}>DEAL! SALES ACADEMY</div>
       <h1 style={{ fontSize: 34, fontWeight: 800, lineHeight: 1.15, margin: "10px 0 6px" }}>สนามซ้อม<br />ก่อนออกสนามจริง</h1>
-      <p style={{ color: BRAND.sub, fontSize: 15, marginBottom: 28 }}>ดูคลิปให้ครบทุกบท → สอบใหญ่ผ่าน 100% → ปลดล็อกซ้อมกับลูกค้าจำลอง แล้วถึงพร้อมปิดการขายจริง</p>
+      <p style={{ color: BRAND.sub, fontSize: 15, marginBottom: 28 }}>ดูคลิปให้ครบทุกบท → สอบใหญ่ผ่าน 95% → ปลดล็อกซ้อมกับลูกค้าจำลอง แล้วถึงพร้อมปิดการขายจริง</p>
       <div style={{ background: BRAND.card, border: `1px solid ${BRAND.line}`, borderRadius: 16, padding: 22 }}>
         <label style={lbl}>ชื่อ–สกุล</label>
         <input className="f" style={inp} value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น มิว สมใจ" />
@@ -276,7 +276,7 @@ function Dashboard(props) {
               <div style={{ fontWeight: 700, fontSize: 17 }}>ข้อสอบใหญ่ (รวมทุกบท)</div>
             </div>
             <p style={{ fontSize: 14, color: BRAND.sub, margin: "0 0 16px" }}>
-              {finalPassed ? "ผ่านแล้ว ✓ ปลดล็อกสนามซ้อมด้านล่างแล้ว" : "รวมคำถามจากทุกบท ตอบถูก 100% เพื่อปลดสนามซ้อม"}
+              {finalPassed ? "ผ่านแล้ว ✓ ปลดล็อกสนามซ้อมด้านล่างแล้ว" : "รวมคำถามจากทุกบท ตอบถูก 95% เพื่อปลดสนามซ้อม"}
             </p>
             <button className="f" onClick={onExam} style={{ ...btnP, background: finalPassed ? BRAND.green : BRAND.red }}>
               {finalPassed ? "ทำข้อสอบอีกครั้ง" : "เริ่มทำข้อสอบใหญ่"}
@@ -349,8 +349,9 @@ function FinalExam({ allWatched, onBack, onPass, passedBefore }) {
   const [submitted, setSubmitted] = useState(false);
   const total = questions.length;
   const correct = questions.filter((q, i) => answers[i] === q.correct).length;
-  const perfect = submitted && correct === total;
-  const submit = () => { setSubmitted(true); if (questions.every((q, i) => answers[i] === q.correct)) onPass(); };
+  const passMark = Math.ceil(total * 0.95);
+  const perfect = submitted && correct >= passMark;
+  const submit = () => { setSubmitted(true); if (correct >= passMark) onPass(); };
   const retry = () => { setAnswers({}); setSubmitted(false); window.scrollTo(0, 0); };
 
   return (
@@ -384,7 +385,7 @@ function FinalExam({ allWatched, onBack, onPass, passedBefore }) {
       )}
       {submitted && !perfect && (
         <div style={{ textAlign: "center" }}>
-          <div style={{ color: BRAND.red, fontWeight: 600, margin: "6px 0 12px" }}>ได้ {correct}/{total} — ยังไม่ผ่าน ต้อง 100%</div>
+          <div style={{ color: BRAND.red, fontWeight: 600, margin: "6px 0 12px" }}>ได้ {correct}/{total} — ยังไม่ผ่าน ต้องได้ {passMark} ขึ้นไป (95%)</div>
           <button className="f" onClick={retry} style={{ ...btnP, width: "100%" }}><RotateCcw size={16} /> ทำใหม่ทั้งชุด</button>
         </div>
       )}
